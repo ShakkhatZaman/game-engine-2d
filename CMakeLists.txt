@@ -10,6 +10,8 @@ set(SOURCE_FILES
     "./src/vendor/glad.c"
     "./src/engine/global.c"
     "./src/engine/renderer/renderer.c"
+    "./src/engine/io/io.c"
+    "./src/engine/renderer/renderer_utils.c"
 )
 
 set(LINKING_LIBRARIES

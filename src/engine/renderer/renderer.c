@@ -8,6 +8,7 @@
 Renderer_state_internal state;
 
 void render_quad_init(uint32 *vao, uint32 *vbo, uint32 *ebo);
+void render_shaders_init(void);
 
 GLFWwindow *_create_window(int32 width, int32 height);
 
@@ -20,6 +21,7 @@ void render_init(void) {
     }
 
     render_quad_init(&state.vao, &state.vbo, &state.ebo);
+    render_shaders_init();
 }
 
 void render_begin(void) {
@@ -33,12 +35,36 @@ void render_end(void) {
 }
 
 void render_quad(vec2 pos, vec2 size, vec4 color) {
+    glUseProgram(state.default_shader);
     glBindVertexArray(state.vao);
 
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    mat4x4 model;
+    mat4x4_identity(model);
+    mat4x4_translate(model, pos[0], pos[1], 0);
+    mat4x4_scale_aniso(model, model, size[0], size[1], 0);
+
+    glUniformMatrix4fv(
+        glGetUniformLocation(state.default_shader, "projection"),
+        1, GL_FALSE, &state.projection[0][0]
+    );
+    glUniform4fv(
+        glGetUniformLocation(state.default_shader, "color"),
+        1, &color[0]
+    );
+    glUniformMatrix4fv(
+        glGetUniformLocation(state.default_shader, "model"),
+        1, GL_FALSE, &model[0][0]
+    );
+
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
     glBindVertexArray(0);
+}
+
+void render_shaders_init(void) {
+    state.default_shader = shader_create("./shaders/default.vert", "./shaders/default.frag");
+    mat4x4_ortho(state.projection, 0, (float32) rendering_state.width, 0, (float32) rendering_state.height, -2, 2);
 }
 
 void render_quad_init(uint32 *vao, uint32 *vbo, uint32 *ebo) {
