@@ -8,6 +8,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(SOURCE_FILES
     "./src/main.c"
     "./src/vendor/glad.c"
+    "./src/engine/global.c"
+    "./src/engine/renderer/renderer.c"
 )
 
 set(LINKING_LIBRARIES
