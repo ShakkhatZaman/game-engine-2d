@@ -15,6 +15,7 @@ typedef struct renderer_state_internal {
     uint32 vao, vbo, ebo;
     uint32 default_shader, texture_color;
     mat4x4 projection;
+    uint8 texture_slot;
 } Renderer_state_internal;
 
 void render_init(void);

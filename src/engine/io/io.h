@@ -12,6 +12,6 @@ typedef struct file {
 } File;
 
 File read_file(const char *filepath);
-bool write_file(File *file, uint64 size, const char *data);
+bool write_file(const char *filepath, uint64 size, const char *data);
 
 #endif // !IO_H

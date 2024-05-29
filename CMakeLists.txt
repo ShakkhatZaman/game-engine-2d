@@ -9,6 +9,9 @@ set(SOURCE_FILES
     "./src/main.c"
     "./src/vendor/glad.c"
     "./src/engine/global.c"
+    "./src/engine/input.c"
+    "./src/engine/time.c"
+    "./src/engine/config.c"
     "./src/engine/renderer/renderer.c"
     "./src/engine/io/io.c"
     "./src/engine/renderer/renderer_utils.c"
@@ -16,6 +19,7 @@ set(SOURCE_FILES
 
 set(LINKING_LIBRARIES
     glfw3
+    opengl32
 )
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})

@@ -9,7 +9,7 @@ File read_file(const char *filepath) {
 
     FILE *file_ptr = fopen(filepath, "rb");
     if (!file_ptr) {
-        ERROR_RETURN(file, "Unable to open for file\n");
+        ERROR_RETURN(file, "Unable to open file: %s\n", filepath);
     }
 
     char *tmp = file.data;
@@ -17,7 +17,8 @@ File read_file(const char *filepath) {
     uint16 n = 0;
 
     while (true) {
-        if (total_bytes_read + 1024 + 1 > file.size) { // if buffer size isn't big enough to read the next chunk then increase size and allocate more space
+        // if buffer size isn't big enough to read the next chunk then increase size and allocate more space
+        if (total_bytes_read + 1024 + 1 > file.size) {
             file.size = total_bytes_read + 1024 + 1;
             if (file.size <= total_bytes_read) {
                 free(file.data);
@@ -42,10 +43,26 @@ File read_file(const char *filepath) {
         if (n < 1024) break;
     }
 
+    fclose(file_ptr);
     file.data[total_bytes_read] = '\0';
     file.size = total_bytes_read;
     file.is_valid = true;
-    fclose(file_ptr);
 
     return file;
+}
+
+bool write_file(const char *filepath, uint64 size, const char *data) {
+    FILE *file_ptr = fopen(filepath, "wb");
+    if (!file_ptr) {
+        ERROR_RETURN(false, "Unable to open file: %s\n", filepath);
+    }
+    
+    uint64 bytes_written = fwrite(data, 1, size, file_ptr);
+
+    fclose(file_ptr);
+    if (bytes_written != size) {
+        ERROR_RETURN(false, "Unable to write to file: %s. Expected to write %lld bytes got %lld bytes\n",
+                     filepath, size, bytes_written);
+    }
+    return true;
 }
