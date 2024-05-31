@@ -3,7 +3,7 @@
 
 #include "config.h"
 #include "renderer/renderer.h"
-#include "input.h"
+#include "input/input.h"
 #include "time.h"
 
 #define WINDOW_WIDTH 800

@@ -1,5 +1,5 @@
 #include "input.h"
-#include "global.h"
+#include "../global.h"
 
 static void update_key_state(uint8 new_state, Key_state *state_ptr);
 static void update_all_keys(Key_state new_state, int key);

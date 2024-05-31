@@ -9,11 +9,13 @@ set(SOURCE_FILES
     "./src/main.c"
     "./src/vendor/glad.c"
     "./src/engine/global.c"
-    "./src/engine/input.c"
     "./src/engine/time.c"
     "./src/engine/config.c"
-    "./src/engine/renderer/renderer.c"
+    "./src/engine/list.c"
     "./src/engine/io/io.c"
+    "./src/engine/input/input.c"
+    "./src/engine/physics/physics.c"
+    "./src/engine/renderer/renderer.c"
     "./src/engine/renderer/renderer_utils.c"
 )
 

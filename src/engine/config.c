@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "global.h"
-#include "input.h"
+#include "input/input.h"
 #include "utils.h"
 #include "config.h"
 #include "io/io.h"
