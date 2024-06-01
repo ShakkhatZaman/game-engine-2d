@@ -11,7 +11,9 @@
 #include "engine/renderer/renderer.h"
 #include "engine/physics/physics.h"
 
+static void handle_input(void);
 static bool app_running = true;
+static vec2 mouse_pos = {25, 25};
 
 int main(void) {
     if(!glfwInit()) {ERROR_RETURN(1, "Unable to initialize GLFW\n");}
@@ -20,66 +22,41 @@ int main(void) {
     render_init();
     config_init();
     physics_init();
-
-    uint32 body_count = 100;
-    for (uint32 i = 0; i < body_count; i++) {
-        uint64 body_index = physics_body_create(
-            (vec2){rand() % rendering_state.width, rand() % rendering_state.height},
-            (vec2){rand() % 100, rand() % 200}
-        );
-        Body *body = physics_body_get(body_index);
-        body->acceleration[0] = (float32)(rand() % 200 - 100);
-        body->acceleration[1] = (float32)(rand() % 200 - 100);
-    }
-
     glfwSetKeyCallback(rendering_state.window, glfw_key_callback);
-    float32 x = 25.0, y = 25.0;
+
+    AABB test = {
+        .pos = {rendering_state.width * 0.5, rendering_state.height * 0.5},
+        .half_size = {50, 50}
+    };
+
 
     while(app_running) {
         time_update();
+        handle_input();
         physics_update();
         render_begin();
 
-        render_quad(
-            (vec2) {x, y},
-            (vec2) {50, 50},
-            (vec4) {1.0, 0.0, 0.0, 1.0}
-        );
+        render_aabb(&test, (vec4){1, 1, 1, 0.5});
 
-        for (uint32 i = 0; i < body_count; i++) {
-            Body *body = physics_body_get(i);
-            render_quad(body->aabb.pos, body->aabb.half_size, (vec4){1, 1, 0, 1});
-            if (body->aabb.pos[0] > rendering_state.width || body->aabb.pos[0] < 0)
-                body->velocity[0] *= -1;
-            if (body->aabb.pos[1] > rendering_state.width || body->aabb.pos[1] < 0)
-                body->velocity[1] *= -1;
-
-            if (body->velocity[0] > 200)
-                body->velocity[0] = 200;
-            if (body->velocity[0] < -200)
-                body->velocity[0] = -200;
-            if (body->velocity[1] > 200)
-                body->velocity[1] = 200;
-            if (body->velocity[1] < -200)
-                body->velocity[1] = -200;
-        }
+        if (physics_point_intersect(mouse_pos, &test))
+            render_quad(mouse_pos, (vec2){10, 10}, (vec4){1, 0, 1, 1});
+        else
+            render_quad(mouse_pos, (vec2){10, 10}, (vec4){1, 1, 1, 1});
 
         render_end();
-        if (keys.right != KEY_UNPRESSED) x += 150 * timing.delta;
-        if (keys.left != KEY_UNPRESSED) x -= 150 * timing.delta;
-        if (keys.up != KEY_UNPRESSED) y += 150 * timing.delta;
-        if (keys.down != KEY_UNPRESSED) y -= 150 * timing.delta;
-        if (keys.escape != KEY_UNPRESSED) app_running = false;
         time_update_end();
-    /* printf("%d\n", timing.frame_rate); */
     }
     render_exit();
 
     glfwDestroyWindow(rendering_state.window);
     glfwTerminate();
-    printf("%d\n", timing.frame_count);
-    printf("%f\n", timing.frame_time);
-    printf("%f\n", timing.frame_delay);
-    printf("%f\n", timing.delta);
     return 0;
+}
+
+static void handle_input(void) {
+    if (keys.escape != KEY_UNPRESSED) app_running = false;
+    float64 x, y;
+    glfwGetCursorPos(rendering_state.window, &x, &y);
+    mouse_pos[0] = (float32) x;
+    mouse_pos[1] = (float32) (rendering_state.height - y);
 }

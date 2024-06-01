@@ -10,6 +10,8 @@ typedef struct physics_internal_state {
 
 static Physics_internal_state state;
 
+static void aabb_min_max(vec2 min, vec2 max, AABB *aabb);
+
 void physics_init(void) {
     state.body_list = list_create(0, sizeof(Body));
 }
@@ -40,4 +42,16 @@ uint64 physics_body_create(vec2 pos, vec2 size) {
 }
 Body *physics_body_get(uint64 index) {
     return (Body *)list_get(state.body_list, index);
+}
+
+bool physics_point_intersect(vec2 point, AABB *aabb) {
+    vec2 min, max;
+    aabb_min_max(min, max, aabb);
+    return point[0] >= min[0] && point[0] <= max[0] &&
+           point[1] >= min[1] && point[1] <= max[1];
+}
+
+static void aabb_min_max(vec2 min, vec2 max, AABB *aabb) {
+    vec2_sub(min, aabb->pos, aabb->half_size);
+    vec2_add(max, aabb->pos, aabb->half_size);
 }

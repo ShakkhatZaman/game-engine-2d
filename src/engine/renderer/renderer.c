@@ -6,7 +6,8 @@
 #include "../utils.h"
 
 typedef struct renderer_state_internal {
-    uint32 vao, vbo, ebo;
+    uint32 vao_quad, vbo_quad, ebo_quad;
+    uint32 vao_line, vbo_line;
     uint32 default_shader, texture_color;
     mat4x4 projection;
     uint8 texture_slot;
@@ -15,6 +16,7 @@ typedef struct renderer_state_internal {
 Renderer_state_internal state;
 
 static void render_quad_init(uint32 *vao, uint32 *vbo, uint32 *ebo);
+static void render_line_init(uint32 *vao, uint32 *vbo);
 static void render_shaders_init(uint32 *shader);
 static void render_textures_init(uint32 *texture);
 
@@ -28,7 +30,8 @@ void render_init(void) {
         ERROR_EXIT_PROGRAM("Exiting in render init\n");
     }
 
-    render_quad_init(&state.vao, &state.vbo, &state.ebo);
+    render_quad_init(&state.vao_quad, &state.vbo_quad, &state.ebo_quad);
+    render_line_init(&state.vao_line, &state.vbo_line);
     render_shaders_init(&state.default_shader);
     state.texture_slot = 0;
     render_textures_init(&state.texture_color);
@@ -45,33 +48,33 @@ void render_end(void) {
 }
 
 void render_exit(void) {
-    glDeleteBuffers(1, &state.vbo);
-    glDeleteBuffers(1, &state.ebo);
-    glDeleteVertexArrays(1, &state.vao);
+    glDeleteBuffers(1, &state.vbo_quad);
+    glDeleteBuffers(1, &state.vbo_line);
+    glDeleteBuffers(1, &state.ebo_quad);
+    glDeleteVertexArrays(1, &state.vao_quad);
+    glDeleteVertexArrays(1, &state.vao_line);
     glDeleteProgram(state.default_shader);
     glDeleteTextures(1, &state.texture_color);
 }
 
 void render_quad(vec2 pos, vec2 size, vec4 color) {
     glUseProgram(state.default_shader);
-    glBindVertexArray(state.vao);
+    glBindVertexArray(state.vao_quad);
 
     mat4x4 model;
-    mat4x4_identity(model);
     mat4x4_translate(model, pos[0], pos[1], 0);
     mat4x4_scale_aniso(model, model, size[0], size[1], 0);
 
-    glUniform4fv(
-        glGetUniformLocation(state.default_shader, "color"),
-        1, &color[0]
-    );
     glUniformMatrix4fv(
         glGetUniformLocation(state.default_shader, "model"),
         1, GL_FALSE, &model[0][0]
     );
+    glUniform4fv(
+        glGetUniformLocation(state.default_shader, "color"),
+        1, &color[0]
+    );
     glUniform1i(
-        glGetUniformLocation(state.default_shader, "texture_id"),
-        0
+        glGetUniformLocation(state.default_shader, "texture_id"), 0
     );
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -79,8 +82,66 @@ void render_quad(vec2 pos, vec2 size, vec4 color) {
     glBindTexture(GL_TEXTURE_2D, state.texture_color);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
-    glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glUseProgram(0);
+}
+
+void render_line_segment(vec2 start, vec2 end, vec4 color) {
+    glUseProgram(state.default_shader);
+    glLineWidth(3);
+
+    float32 x = end[0] - start[0];
+    float32 y = end[1] - start[1];
+    float32 line[6] = {0, 0, 0, x, y, 0};
+
+    mat4x4 model;
+    mat4x4_translate(model, start[0], start[1], 0);
+
+    glUniformMatrix4fv(
+        glGetUniformLocation(state.default_shader, "model"),
+        1, GL_FALSE, &model[0][0]
+    );
+    glUniform4fv(
+        glGetUniformLocation(state.default_shader, "color"),
+        1, &color[0]
+    );
+    glUniform1i(
+        glGetUniformLocation(state.default_shader, "texture_id"), 0
+    );
+
+
+    glBindVertexArray(state.vao_line);
+    glActiveTexture(GL_TEXTURE0 + state.texture_slot);
+    glBindTexture(GL_TEXTURE_2D, state.texture_color);
+
+    glBindBuffer(GL_ARRAY_BUFFER, state.vbo_line);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, 6 * sizeof(*line), line);
+    glDrawArrays(GL_LINES, 0, 2);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glUseProgram(0);
+}
+
+void render_quad_line(vec2 pos, vec2 size, vec4 color) {
+    vec2 points[] = {
+        {pos[0] - size[0] * 0.5, pos[1] - size[1] * 0.5},
+        {pos[0] + size[0] * 0.5, pos[1] - size[1] * 0.5},
+        {pos[0] + size[0] * 0.5, pos[1] + size[1] * 0.5},
+        {pos[0] - size[0] * 0.5, pos[1] + size[1] * 0.5},
+    };
+    render_line_segment(points[0], points[1], color);
+    render_line_segment(points[1], points[2], color);
+    render_line_segment(points[2], points[3], color);
+    render_line_segment(points[3], points[0], color);
+}
+
+void render_aabb(AABB *aabb, vec4 color) {
+    vec2 size;
+    vec2_scale(size, aabb->half_size, 2);
+    render_quad_line(aabb->pos, size, color);
 }
 
 static void render_shaders_init(uint32 *shader) {
@@ -140,6 +201,19 @@ static void render_quad_init(uint32 *vao, uint32 *vbo, uint32 *ebo) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
+static void render_line_init(uint32 *vao, uint32 *vbo) {
+    glGenVertexArrays(1, vao);
+    glBindVertexArray(*vao);
+
+    glGenBuffers(1, vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, *vbo);
+    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float32), NULL, GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float32), NULL);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
 
 static GLFWwindow *_create_window(int32 width, int32 height) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -164,6 +238,8 @@ static GLFWwindow *_create_window(int32 width, int32 height) {
     printf("Renderer: %s\n", glGetString(GL_RENDERER));
 
     glViewport(0, 0, width, height);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     return window;
 }
