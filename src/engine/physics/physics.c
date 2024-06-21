@@ -2,6 +2,7 @@
 #include "../list.h"
 #include "../utils.h"
 #include "../global.h"
+#include <math.h>
 
 
 typedef struct physics_internal_state {
@@ -49,6 +50,43 @@ bool physics_point_intersect(vec2 point, AABB *aabb) {
     aabb_min_max(min, max, aabb);
     return point[0] >= min[0] && point[0] <= max[0] &&
            point[1] >= min[1] && point[1] <= max[1];
+}
+
+bool physics_aabb_intersect(AABB *a, AABB *b) {
+    vec2 min, max;
+    AABB diff = minkowsky_diff_aabb(a, b);
+    aabb_min_max(min, max, &diff);
+    return (min[0] <= 0 && max[0] >= 0 && min[1] <= 0 && max[1] >= 0);
+}
+
+AABB minkowsky_diff_aabb(AABB *a, AABB *b) {
+    AABB diff;
+    vec2_sub(diff.pos, a->pos, b->pos);
+    vec2_add(diff.half_size, a->half_size, b->half_size);
+    return diff;
+}
+
+void minkowsky_diff_pen_vector(vec2 result, AABB *minkowsky_aabb) {
+    vec2 min, max;
+    aabb_min_max(min, max, minkowsky_aabb);
+
+    float32 min_dist = fabsf(min[0]);
+    result[0] = min[0];
+    result[1] = 0;
+
+    if (fabsf(max[0]) < min_dist) {
+        min_dist = fabsf(max[0]);
+        result[0] = max[0];
+    }
+    if (fabsf(min[0]) < min_dist) {
+        min_dist = fabsf(min[0]);
+        result[0] = 0;
+        result[1] = min[1];
+    }
+    if (fabsf(max[1]) < min_dist) {
+        result[0] = 0;
+        result[1] = max[1];
+    }
 }
 
 static void aabb_min_max(vec2 min, vec2 max, AABB *aabb) {

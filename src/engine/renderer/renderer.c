@@ -110,7 +110,6 @@ void render_line_segment(vec2 start, vec2 end, vec4 color) {
         glGetUniformLocation(state.default_shader, "texture_id"), 0
     );
 
-
     glBindVertexArray(state.vao_line);
     glActiveTexture(GL_TEXTURE0 + state.texture_slot);
     glBindTexture(GL_TEXTURE_2D, state.texture_color);

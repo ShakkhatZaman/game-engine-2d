@@ -28,20 +28,50 @@ int main(void) {
         .pos = {rendering_state.width * 0.5, rendering_state.height * 0.5},
         .half_size = {50, 50}
     };
+    AABB cursor_aabb = {
+        .half_size = {75, 75}
+    };
+    AABB sum_aabb = {
+        .pos = {test.pos[0], test.pos[1]},
+        .half_size = {
+            test.half_size[0] + cursor_aabb.half_size[0],
+            test.half_size[1] + cursor_aabb.half_size[1]
+        }
+    };
 
 
     while(app_running) {
         time_update();
         handle_input();
         physics_update();
+
+        cursor_aabb.pos[0] = mouse_pos[0];  
+        cursor_aabb.pos[1] = mouse_pos[1];  
+
         render_begin();
 
         render_aabb(&test, (vec4){1, 1, 1, 0.5});
+        render_aabb(&sum_aabb, (vec4){1, 1, 1, 0.5});
 
-        if (physics_point_intersect(mouse_pos, &test))
-            render_quad(mouse_pos, (vec2){10, 10}, (vec4){1, 0, 1, 1});
+        AABB minkowsky_diff = minkowsky_diff_aabb(&test, &cursor_aabb);
+        render_aabb(&minkowsky_diff, (vec4){0, 1, 1, 0.5});
+
+        vec2 pen_vector;
+        minkowsky_diff_pen_vector(pen_vector, &minkowsky_diff);
+        AABB collision_aabb = cursor_aabb;
+        collision_aabb.pos[0] += pen_vector[0];
+        collision_aabb.pos[1] += pen_vector[1];
+
+        if (physics_aabb_intersect(&cursor_aabb, &test)) {
+            render_aabb(&cursor_aabb, (vec4){1, 1, 0, 0.5});
+            render_aabb(&collision_aabb, (vec4){0, 1, 1, 0.5});
+            vec2 line;
+            vec2_add(line, cursor_aabb.pos, pen_vector);
+            render_line_segment(cursor_aabb.pos, line, (vec4){1, 1, 1, 0.5});
+        }
         else
-            render_quad(mouse_pos, (vec2){10, 10}, (vec4){1, 1, 1, 1});
+            render_aabb(&cursor_aabb, (vec4){1, 0, 1, 0.5});
+
 
         render_end();
         time_update_end();
