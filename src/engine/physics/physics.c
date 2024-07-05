@@ -11,8 +11,6 @@ typedef struct physics_internal_state {
 
 static Physics_internal_state state;
 
-static void aabb_min_max(vec2 min, vec2 max, AABB *aabb);
-
 void physics_init(void) {
     state.body_list = list_create(0, sizeof(Body));
 }
@@ -59,6 +57,34 @@ bool physics_aabb_intersect(AABB *a, AABB *b) {
     return (min[0] <= 0 && max[0] >= 0 && min[1] <= 0 && max[1] >= 0);
 }
 
+Collision ray_collide_aabb(vec2 pos, vec2 magnitude, AABB aabb) {
+    Collision result = {0};
+    vec2 min, max;
+    float32 last_entry = -INFINITY, first_exit = INFINITY;
+
+    aabb_min_max(min, max, &aabb);
+    for (uint8 i = 0; i < 2; i++) {
+        if (magnitude[0] != 0) {
+            float32 t1 = (min[i] - pos[i]) / magnitude[i];
+            float32 t2 = (max[i] - pos[i]) / magnitude[i];
+
+            last_entry = fmaxf(last_entry, fminf(t1, t2));
+            first_exit = fminf(first_exit, fmaxf(t1, t2));
+        }
+        else if (pos[i] <= min[i] || pos[i] >= max[i]) {
+            return result;
+        }
+    }
+    if (first_exit > last_entry && first_exit > 0 && last_entry < 1) {
+        result.pos[0] = pos[0] + magnitude[0] * last_entry;
+        result.pos[1] = pos[1] + magnitude[1] * last_entry;
+        result.collided = true;
+        result.time = last_entry;
+    }
+    return result;
+
+}
+
 AABB minkowsky_diff_aabb(AABB *a, AABB *b) {
     AABB diff;
     vec2_sub(diff.pos, a->pos, b->pos);
@@ -89,7 +115,7 @@ void minkowsky_diff_pen_vector(vec2 result, AABB *minkowsky_aabb) {
     }
 }
 
-static void aabb_min_max(vec2 min, vec2 max, AABB *aabb) {
+void aabb_min_max(vec2 min, vec2 max, AABB *aabb) {
     vec2_sub(min, aabb->pos, aabb->half_size);
     vec2_add(max, aabb->pos, aabb->half_size);
 }

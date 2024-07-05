@@ -6,9 +6,6 @@
 #include "input/input.h"
 #include "time.h"
 
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
-
 extern Renderer_state rendering_state;
 
 extern Input_states keys;

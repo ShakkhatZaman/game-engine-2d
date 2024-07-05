@@ -23,8 +23,8 @@ static void render_textures_init(uint32 *texture);
 static GLFWwindow *_create_window(int32 width, int32 height);
 
 void render_init(void) {
-    rendering_state.width = WINDOW_WIDTH;
-    rendering_state.height = WINDOW_HEIGHT;
+    rendering_state.width = 800;
+    rendering_state.height = 600;
     rendering_state.window = _create_window(rendering_state.width, rendering_state.height);
     if (!rendering_state.window) {
         ERROR_EXIT_PROGRAM("Exiting in render init\n");
