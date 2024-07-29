@@ -58,7 +58,6 @@ int main(void) {
         time_update_end();
     }
     render_exit();
-    printf("%f, ", player_body->aabb.pos[1]);
 
     glfwDestroyWindow(rendering_state.window);
     glfwTerminate();
@@ -71,9 +70,9 @@ static void handle_input(void) {
     float32 velx = 0;
     float32 vely = player_body->velocity[1];
 
-    if (keys.left != KEY_UNPRESSED) velx -= 100;
-    if (keys.right != KEY_UNPRESSED) velx += 100;
-    if (keys.up != KEY_UNPRESSED) vely = 400;
+    if (keys.left != KEY_UNPRESSED) velx -= 300;
+    if (keys.right != KEY_UNPRESSED) velx += 300;
+    if (keys.up != KEY_UNPRESSED) vely = 600;
     if (keys.down != KEY_UNPRESSED) vely -= 80;
 
     player_body->velocity[0] = velx;

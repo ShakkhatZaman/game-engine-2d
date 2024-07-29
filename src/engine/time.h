@@ -13,4 +13,6 @@ void time_init(uint32 frame_rate);
 void time_update(void);
 void time_update_end(void);
 
+void delay(uint32 time_ms);
+
 #endif // !TIME_H

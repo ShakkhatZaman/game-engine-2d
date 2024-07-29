@@ -27,6 +27,7 @@ typedef struct collision {
 
 void physics_init(void);
 void physics_update(void);
+void physics_exit(void);
 
 uint64 physics_body_create(vec2 pos, vec2 size);
 Body *physics_body_get(uint64 index);

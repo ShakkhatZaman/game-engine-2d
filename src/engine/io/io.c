@@ -17,7 +17,7 @@ File read_file(const char *filepath) {
     uint16 n = 0;
 
     while (true) {
-        // if buffer size isn't big enough to read the next chunk then increase size and allocate more space
+        // if *buffer size* isn't big enough to read the next chunk then increase size and allocate more space
         if (total_bytes_read + 1024 + 1 > file.size) {
             file.size = total_bytes_read + 1024 + 1;
             if (file.size <= total_bytes_read) {
@@ -38,6 +38,7 @@ File read_file(const char *filepath) {
             }
             file.data = tmp;
         }
+        // keep reading untill nothing left
         n = fread(file.data + total_bytes_read, 1, 1024, file_ptr);
         total_bytes_read += n;
         if (n < 1024) break;

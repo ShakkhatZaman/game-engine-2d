@@ -14,5 +14,6 @@ uint64 list_append(List *list, void *data);
 void *list_get(List *list, uint64 index);
 bool list_remove(List *list, uint64 index);
 void list_insert(List *list, uint64 index);
+void list_delete(List *list);
 
 #endif // !LIST_H

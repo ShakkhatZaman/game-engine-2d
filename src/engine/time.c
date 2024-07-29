@@ -9,7 +9,7 @@
 #include <unistd.h>
 #endif
 
-static void delay(uint32 time_ms);
+void delay(uint32 time_ms);
 
 void time_init(uint32 frame_rate) {
     timing.frame_rate = frame_rate;
@@ -35,7 +35,7 @@ void time_update_end(void) {
         delay((uint32) (timing.frame_delay - timing.frame_time) / 2); // ?!?!?!?????! Dumb windows issue
 }
 
-static void delay(uint32 time_ms) {
+void delay(uint32 time_ms) {
 #ifdef _WIN32
     Sleep(time_ms);
 #else

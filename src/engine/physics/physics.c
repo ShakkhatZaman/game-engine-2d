@@ -22,7 +22,7 @@ void physics_init(void) {
     state.body_list = list_create(0, sizeof(Body));
     state.static_body_list = list_create(0, sizeof(Static_body));
 
-    state.gravity = -30;
+    state.gravity = -20;
     state.terminal_velocity = -1000;
 
     tick_rate = 1.0 / iterations;
@@ -34,13 +34,14 @@ void physics_update(void) {
         body = list_get(state.body_list, i);
 
         body->velocity[1] += state.gravity;
-        if (state.terminal_velocity > body->velocity[1]) {
+        // limit y velocity to terminal velocity
+        if (state.terminal_velocity > body->velocity[1])
             body->velocity[1] = state.terminal_velocity;
-        }
 
         body->velocity[0] += body->acceleration[0];
         body->velocity[1] += body->acceleration[1];
 
+        // scale velocity with delta time to use in calculations
         vec2 scaled_velocity;
         vec2_scale(scaled_velocity, body->velocity, timing.delta * tick_rate);
         for (int j = 0; j < iterations; j++) {
@@ -104,7 +105,7 @@ Collision ray_collide_aabb(vec2 pos, vec2 magnitude, AABB aabb) {
 
     aabb_min_max(min, max, &aabb);
     for (uint8 i = 0; i < 2; i++) {
-        if (magnitude[0] != 0) {
+        if (magnitude[i] != 0) {
             float32 t1 = (min[i] - pos[i]) / magnitude[i];
             float32 t2 = (max[i] - pos[i]) / magnitude[i];
 
@@ -126,6 +127,7 @@ Collision ray_collide_aabb(vec2 pos, vec2 magnitude, AABB aabb) {
         float32 px = aabb.half_size[0] - fabsf(dx);
         float32 py = aabb.half_size[1] - fabsf(dy);
 
+        // set normal for the direction of collision
         if (px < py) 
             result.normal[0] = (dx > 0) - (dx < 0);
         else
@@ -146,10 +148,14 @@ void minkowsky_diff_pen_vector(vec2 result, AABB *minkowsky_aabb) {
     vec2 min, max;
     aabb_min_max(min, max, minkowsky_aabb);
 
-    float32 min_dist = fabsf(min[0]);
-    result[0] = min[0];
+    // get default minimum distance to move the object
+    float32 min_dist_signed = fabsf(min[0]) < fabsf(min[1]) ? min[0] : min[1];
+    float32 min_dist = fabsf(min_dist_signed);
+
+    result[0] = min_dist_signed;
     result[1] = 0;
 
+    // set the correct distance to move the object
     if (fabsf(max[0]) < min_dist) {
         min_dist = fabsf(max[0]);
         result[0] = max[0];
@@ -178,30 +184,33 @@ static void stationary_response(Body *body) {
         vec2 min, max;
         aabb_min_max(min, max, &aabb);
         if (min[0] <= 0 && max[0] >= 0 && min[1] <= 0 && max[1] >= 0) {
+            // move object according to penetration vector
             vec2 penetration_vector;
             minkowsky_diff_pen_vector(penetration_vector, &aabb);
             vec2_add(body->aabb.pos, body->aabb.pos, penetration_vector);
         }
     }
 }
-static void sweep_response(Body *body, vec2 velocity) {
-    Collision collision = sweep_static_bodies(&body->aabb, velocity);
+static void sweep_response(Body *body, vec2 distance) {
+    Collision collision = sweep_static_bodies(&body->aabb, distance);
 
     if (collision.collided) {
         body->aabb.pos[0] = collision.pos[0];
         body->aabb.pos[1] = collision.pos[1];
 
+        // reset velocity in the direction of collision and move in the other direction
         if (collision.normal[0] != 0) {
-            body->aabb.pos[1] += velocity[1];
+            body->aabb.pos[1] += distance[1];
             body->velocity[0] = 0;
         }
         else if (collision.normal[1] != 0) {
-            body->aabb.pos[0] += velocity[0];
+            body->aabb.pos[0] += distance[0];
             body->velocity[1] = 0;
         }
     }
     else {
-        vec2_add(body->aabb.pos, body->aabb.pos, velocity);
+        // no collisions
+        vec2_add(body->aabb.pos, body->aabb.pos, distance);
     }
 }
 
@@ -211,8 +220,9 @@ static Collision sweep_static_bodies(AABB *aabb, vec2 velocity) {
     for (uint32 i = 0; i < state.static_body_list->len; i++) {
         Static_body *static_body = physics_static_body_get(i);
         AABB sum_aabb = static_body->aabb;
+        // calculate collision aabb
         vec2_add(sum_aabb.half_size, sum_aabb.half_size, aabb->half_size);
-
+        // cast a ray from the object's position to collsion rectangle
         Collision hit = ray_collide_aabb(aabb->pos, velocity, sum_aabb);
         if (!hit.collided)
             continue;
@@ -228,4 +238,9 @@ static Collision sweep_static_bodies(AABB *aabb, vec2 velocity) {
         }
     }
     return result;
+}
+
+void physics_exit(void) {
+    list_delete(state.body_list);
+    list_delete(state.static_body_list);
 }
