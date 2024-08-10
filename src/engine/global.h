@@ -2,11 +2,8 @@
 #define GLOBAL_H
 
 #include "config.h"
-#include "renderer/renderer.h"
 #include "input/input.h"
 #include "time.h"
-
-extern Renderer_state rendering_state;
 
 extern Input_states keys;
 

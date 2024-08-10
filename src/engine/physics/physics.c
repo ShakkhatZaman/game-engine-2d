@@ -23,8 +23,8 @@ void physics_init(void) {
     state.body_list = list_create(0, sizeof(Body));
     state.static_body_list = list_create(0, sizeof(Static_body));
 
-    state.gravity = -20;
-    state.terminal_velocity = -1000;
+    state.gravity = -75;
+    state.terminal_velocity = -7000;
 
     tick_rate = 1.0 / iterations;
 }

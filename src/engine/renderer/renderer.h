@@ -8,15 +8,18 @@
 #include "../physics/physics.h"
 #include "../types.h"
 
-typedef struct renderer_state {
-    GLFWwindow *window;
-    int32 width;
-    int32 height;
-} Renderer_state;
+#define MAX_QUADS 1000
+#define MAX_VERTICES 4000
+#define MAX_INDICES 6000
 
-void render_init(void);
+typedef struct batch_vertex {
+    vec2 pos, uv;
+    vec4 color;
+} B_vertex;
+
+GLFWwindow *render_init(void);
 void render_begin(void);
-void render_end(void);
+void render_end(GLFWwindow *window, float32 *m_width, float32 *m_height);
 void render_exit(void);
 
 uint32 shader_create(const char *vert_shader_path, const char *frag_shader_path);
@@ -26,5 +29,7 @@ void render_quad(vec2 pos, vec2 size, vec4 color);
 void render_quad_line(vec2 pos, vec2 size, vec4 color);
 void render_line_segment(vec2 start, vec2 end, vec4 color);
 void render_aabb(AABB *aabb, vec4 color);
+
+void append_batch_quad(vec2 pos, vec2 size, vec4 uv, vec4 color);
 
 #endif // !RENDERER_H

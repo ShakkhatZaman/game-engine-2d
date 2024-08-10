@@ -5,9 +5,6 @@
 
 #include "engine/global.h"
 #include "engine/utils.h"
-#include "engine/config.h"
-#include "engine/time.h"
-#include "engine/input/input.h"
 #include "engine/renderer/renderer.h"
 #include "engine/physics/physics.h"
 #include "engine/entities/entities.h"
@@ -45,28 +42,27 @@ int main(void) {
     if(!glfwInit()) {ERROR_RETURN(1, "Unable to initialize GLFW\n");}
 
     time_init(60);
-    render_init();
+    GLFWwindow *window = render_init();
     config_init();
     physics_init();
     entity_init();
-    glfwSetKeyCallback(rendering_state.window, glfw_key_callback);
+    glfwSetKeyCallback(window, glfw_key_callback);
     
     uint8 enemy_mask = COLLISION_LAYER_PLAYER | COLLISION_LAYER_TERRAIN;
     uint8 player_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_TERRAIN;
     
     uint64 player_id = entity_create((Body_data){
-                                     .pos = {300, 100}, .size = {50, 50},
+                                     .pos = {300, 100}, .size = {25, 25},
                                      .velocity = {0, 0}, .collision_layer = COLLISION_LAYER_PLAYER, .collision_mask = player_mask},
                                      player_on_hit_callback, player_on_static_hit_callback);
-    float32 width = rendering_state.width;
-    float32 height = rendering_state.height;
-    uint32 static_body_a_id = physics_static_body_create((Body_data){.pos = {width * 0.5 - 10, height - 10}, .size = {width - 20, 20}, .collision_layer = COLLISION_LAYER_TERRAIN});
-    uint32 static_body_b_id = physics_static_body_create((Body_data){.pos = {width - 10, height * 0.5 + 10}, .size = {20, height - 20}, .collision_layer = COLLISION_LAYER_TERRAIN});
-    uint32 static_body_c_id = physics_static_body_create((Body_data){.pos = {width * 0.5 + 10, 10}, .size = {width - 20, 20}, .collision_layer = COLLISION_LAYER_TERRAIN});
-    uint32 static_body_d_id = physics_static_body_create((Body_data){.pos = {10, height * 0.5 - 10}, .size = {20, height - 20}, .collision_layer = COLLISION_LAYER_TERRAIN});
+    float32 width = 640, height = 360;
+    uint32 static_body_a_id = physics_static_body_create((Body_data){.pos = {width * 0.5 - 12.5, height - 12.5}, .size = {width - 25, 25}, .collision_layer = COLLISION_LAYER_TERRAIN});
+    uint32 static_body_b_id = physics_static_body_create((Body_data){.pos = {width - 12.5, height * 0.5 + 12.5}, .size = {25, height - 25}, .collision_layer = COLLISION_LAYER_TERRAIN});
+    uint32 static_body_c_id = physics_static_body_create((Body_data){.pos = {width * 0.5 + 12.5, 12.5}, .size = {width - 25, 25}, .collision_layer = COLLISION_LAYER_TERRAIN});
+    uint32 static_body_d_id = physics_static_body_create((Body_data){.pos = {12.5, height * 0.5 - 12.5}, .size = {25, height - 25}, .collision_layer = COLLISION_LAYER_TERRAIN});
     uint32 static_body_e_id = physics_static_body_create((Body_data){.pos = {width * 0.5, height * 0.5}, .size = {50, 50}, .collision_layer = COLLISION_LAYER_TERRAIN});
     uint64 enemy_id_a = entity_create((Body_data){
-                                     .pos = {300, 100}, .size = {50, 50},
+                                     .pos = {300, 100}, .size = {25, 25},
                                      .velocity = {90, 0}, .collision_layer = COLLISION_LAYER_ENEMY, .collision_mask = enemy_mask},
                                      NULL, enemy_on_static_hit_callback);
 
@@ -93,7 +89,19 @@ int main(void) {
         render_aabb(&static_body_d->aabb, (vec4){1, 1, 1, 1});
         render_aabb(&static_body_e->aabb, (vec4){1, 1, 1, 1});
 
-        render_end();
+        for (int i = 0; i < 500; i++) {
+            vec4 color = {
+                (rand() % 255) / 255.0,
+                (rand() % 255) / 255.0,
+                (rand() % 255) / 255.0,
+                (rand() % 255) / 255.0,
+            };
+            append_batch_quad((vec2){rand() % 640, rand() % 360},
+                              (vec2){rand() % 27, rand() % 25},
+                              NULL, color);
+        }
+
+        render_end(window, &width, &height);
         time_update_end();
         player_color[0] = 0;
         player_color[2] = 1;
@@ -102,7 +110,7 @@ int main(void) {
     physics_exit();
     entity_exit();
 
-    glfwDestroyWindow(rendering_state.window);
+    glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
 }
@@ -117,9 +125,9 @@ static void handle_input(void) {
     if (keys.right != KEY_UNPRESSED) velx += 400;
     if (keys.up != KEY_UNPRESSED && player_on_ground) {
         player_on_ground = false;
-        vely = 900;
+        vely = 1500;
     }
-    if (keys.down != KEY_UNPRESSED) vely -= 80;
+    // if (keys.down != KEY_UNPRESSED) vely -= 80;
 
     player_body->velocity[0] = velx;
     player_body->velocity[1] = vely;
