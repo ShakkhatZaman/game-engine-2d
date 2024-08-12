@@ -66,6 +66,8 @@ int main(void) {
                                      .velocity = {90, 0}, .collision_layer = COLLISION_LAYER_ENEMY, .collision_mask = enemy_mask},
                                      NULL, enemy_on_static_hit_callback);
 
+    Sprite_sheet player_sprite_sheet;
+    render_load_sprite_sheet(&player_sprite_sheet, "./res/assets/player.png", 24, 24);
     while(app_running) {
         time_update();
 
@@ -89,19 +91,11 @@ int main(void) {
         render_aabb(&static_body_d->aabb, (vec4){1, 1, 1, 1});
         render_aabb(&static_body_e->aabb, (vec4){1, 1, 1, 1});
 
-        for (int i = 0; i < 500; i++) {
-            vec4 color = {
-                (rand() % 255) / 255.0,
-                (rand() % 255) / 255.0,
-                (rand() % 255) / 255.0,
-                (rand() % 255) / 255.0,
-            };
-            append_batch_quad((vec2){rand() % 640, rand() % 360},
-                              (vec2){rand() % 27, rand() % 25},
-                              NULL, color);
-        }
+        render_sprite_sheet_frame(&player_sprite_sheet, 1, 2, (vec2){100, 200}, (vec2){50, 50});
+        render_sprite_sheet_frame(&player_sprite_sheet, 0, 3, (vec2){50, 100}, (vec2){25, 25});
+        render_sprite_sheet_frame(&player_sprite_sheet, 0, 0, player_body->aabb.pos, (vec2){25, 25});
 
-        render_end(window, &width, &height);
+        render_end(window, &width, &height, player_sprite_sheet.texture_id);
         time_update_end();
         player_color[0] = 0;
         player_color[2] = 1;
@@ -109,6 +103,7 @@ int main(void) {
     render_exit();
     physics_exit();
     entity_exit();
+    glDeleteTextures(1, &player_sprite_sheet.texture_id);
 
     glfwDestroyWindow(window);
     glfwTerminate();

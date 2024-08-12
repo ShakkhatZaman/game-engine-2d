@@ -1,6 +1,8 @@
 #include <stddef.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include "renderer.h"
 #include "../utils.h"
@@ -25,6 +27,8 @@ static void render_shaders_init(void);
 static void render_textures_init(uint32 *texture);
 static void render_batch(uint32 count, uint32 texture_id);
 
+static void append_batch_quad(vec2 pos, vec2 size, vec4 uv, vec4 color);
+
 static GLFWwindow *_create_window(int32 width, int32 height);
 
 GLFWwindow *render_init(void) {
@@ -33,6 +37,7 @@ GLFWwindow *render_init(void) {
         ERROR_EXIT_PROGRAM("Exiting in render init\n");
     }
 
+    stbi_set_flip_vertically_on_load(true);
     render_quad_init(&vao_quad, &vbo_quad, &ebo_quad);
     render_line_init(&vao_line, &vbo_line);
     render_shaders_init();
@@ -52,8 +57,8 @@ void render_begin(void) {
     batch_vert_list->len = 0;
 }
 
-void render_end(GLFWwindow *window, float32 *m_width, float32 *m_height) {
-    render_batch(batch_vert_list->len, texture_color);
+void render_end(GLFWwindow *window, float32 *m_width, float32 *m_height, uint32 batch_texture_id) {
+    render_batch(batch_vert_list->len, batch_texture_id);
     glfwSwapBuffers(window);
     glfwPollEvents();
     int32 new_width, new_height;
@@ -170,7 +175,21 @@ void render_aabb(AABB *aabb, vec4 color) {
     render_quad_line(aabb->pos, size, color);
 }
 
-void append_batch_quad(vec2 pos, vec2 size, vec4 uv, vec4 color) {
+void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, vec2 pos, vec2 size) {
+    vec4 uv;
+    float32 norm_cell_width = (1.0 / sheet->width) * sheet->cell_width;
+    float32 norm_cell_height = (1.0 / sheet->height) * sheet->cell_height;
+    float32 x = col * norm_cell_width, y = row * norm_cell_height;
+    uv[0] = x;
+    uv[1] = y;
+    uv[2] = x + norm_cell_width;
+    uv[3] = y + norm_cell_height;
+
+    vec2 bottom_left = {pos[0] - size[0] * 0.5, pos[1] - size[1] * 0.5};
+    append_batch_quad(bottom_left, size, uv, (vec4){1, 1, 1, 1});
+}
+
+static void append_batch_quad(vec2 pos, vec2 size, vec4 uv, vec4 color) {
     vec4 default_uv = {0, 0, 1, 1};
     if (uv)
         memcpy(default_uv, uv, 4 * sizeof(*default_uv));
@@ -215,8 +234,8 @@ static void render_batch(uint32 count, uint32 texture_id) {
 }
 
 static void render_shaders_init(void) {
-    default_shader = shader_create("./shaders/default.vert", "./shaders/default.frag");
-    batch_shader = shader_create("./shaders/batch_quad.vert", "./shaders/batch_quad.frag");
+    default_shader = shader_create("./res/shaders/default.vert", "./res/shaders/default.frag");
+    batch_shader = shader_create("./res/shaders/batch_quad.vert", "./res/shaders/batch_quad.frag");
     mat4x4_ortho(projection, 0, render_width, 0, render_height, -2, 2);
     glUseProgram(default_shader);
     glUniformMatrix4fv(
@@ -240,6 +259,30 @@ static void render_textures_init(uint32 *texture) {
     uint8 white[] = {255, 255, 255, 255};
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void render_load_sprite_sheet(Sprite_sheet *sheet, const char *path, float32 cell_width, float32 cell_height) {
+    glGenTextures(1, &sheet->texture_id);
+    glActiveTexture(GL_TEXTURE0 + texture_slot);
+
+    glBindTexture(GL_TEXTURE_2D, sheet->texture_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    int32 width, height, channel_count;
+    uint8 *image_data = stbi_load(path, &width, &height, &channel_count, 0);
+    if (!image_data) {
+        ERROR_EXIT("Failed to load image : %s.\n", path);
+    }
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
+    stbi_image_free(image_data);
+
+    sheet->width = (float32) width;
+    sheet->height = (float32) height;
+    sheet->cell_width = cell_width;
+    sheet->cell_height = cell_height;
 }
 
 static void render_quad_init(uint32 *vao, uint32 *vbo, uint32 *ebo) {
