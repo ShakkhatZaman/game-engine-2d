@@ -36,6 +36,6 @@ void render_line_segment(vec2 start, vec2 end, vec4 color);
 void render_aabb(AABB *aabb, vec4 color);
 
 void render_load_sprite_sheet(Sprite_sheet *sheet, const char *path, float32 cell_width, float32 cell_height);
-void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, vec2 pos, vec2 size);
+void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, vec2 pos, vec2 size, bool is_flipped);
 
 #endif // !RENDERER_H

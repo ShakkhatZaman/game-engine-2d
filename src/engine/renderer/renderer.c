@@ -175,14 +175,14 @@ void render_aabb(AABB *aabb, vec4 color) {
     render_quad_line(aabb->pos, size, color);
 }
 
-void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, vec2 pos, vec2 size) {
+void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, vec2 pos, vec2 size, bool is_flipped) {
     vec4 uv;
     float32 norm_cell_width = (1.0 / sheet->width) * sheet->cell_width;
     float32 norm_cell_height = (1.0 / sheet->height) * sheet->cell_height;
     float32 x = col * norm_cell_width, y = row * norm_cell_height;
-    uv[0] = x;
+    uv[0] = x + ((is_flipped) ? norm_cell_width : 0);
     uv[1] = y;
-    uv[2] = x + norm_cell_width;
+    uv[2] = x + ((is_flipped) ? 0 : norm_cell_width);
     uv[3] = y + norm_cell_height;
 
     vec2 bottom_left = {pos[0] - size[0] * 0.5, pos[1] - size[1] * 0.5};
@@ -274,7 +274,7 @@ void render_load_sprite_sheet(Sprite_sheet *sheet, const char *path, float32 cel
     int32 width, height, channel_count;
     uint8 *image_data = stbi_load(path, &width, &height, &channel_count, 0);
     if (!image_data) {
-        ERROR_EXIT("Failed to load image : %s.\n", path);
+        ERROR_EXIT_PROGRAM("Failed to load image : %s.\n", path);
     }
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
     stbi_image_free(image_data);

@@ -7,7 +7,7 @@
 #include "../physics/physics.h"
 
 typedef struct entity {
-    uint64 id;
+    uint64 body_id, animation_id;
     bool active;
 } Entity; 
 

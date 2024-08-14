@@ -9,7 +9,8 @@ void entity_init(void) {
 
 uint64 entity_create(Body_data data, On_hit on_hit, On_static_hit on_static_hit) {
     Entity entity = {
-        .id = physics_body_create(&data, on_hit, on_static_hit),
+        .body_id = physics_body_create(&data, on_hit, on_static_hit),
+        .animation_id = -1,
         .active = true
     };
     return list_append(entity_list, &entity);

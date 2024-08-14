@@ -62,8 +62,9 @@ void list_delete(List *list) {
             free(list->items);
         free(list);
     }
-    else
-        ERROR_EXIT("Illegal pointer\n");
+    else {
+        ERROR_EXIT_PROGRAM("Illegal pointer\n");
+    }
 }
 
 void list_insert(List *list, uint64 index);
