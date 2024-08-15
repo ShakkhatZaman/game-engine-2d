@@ -18,6 +18,8 @@ static void stationary_response(Body *body);
 static void sweep_response(Body *body, vec2 velocity);
 static Collision sweep_static_bodies(Body *body, vec2 velocity);
 static Collision sweep_bodies(Body *body, vec2 velocity);
+static void update_sweep_result(Collision *result, Body *body, uint64 other_id, vec2 velocity);
+static void update_sweep_result_static(Collision *result, Body *body, uint64 other_id, vec2 velocity);
 
 void physics_init(void) {
     state.body_list = list_create(0, sizeof(Body));
@@ -29,15 +31,23 @@ void physics_init(void) {
     tick_rate = 1.0 / iterations;
 }
 
+void physics_exit(void) {
+    list_delete(state.body_list);
+    list_delete(state.static_body_list);
+}
+
 void physics_update(void) {
     Body *body;
     for (uint64 i = 0; i < state.body_list->len; i++) {
         body = list_get(state.body_list, i);
 
-        body->velocity[1] += state.gravity;
-        // limit y velocity to terminal velocity
-        if (state.terminal_velocity > body->velocity[1])
-            body->velocity[1] = state.terminal_velocity;
+        if (!body->active) continue;
+        if (!body->kinematic) {
+            body->velocity[1] += state.gravity;
+            // limit y velocity to terminal velocity
+            if (state.terminal_velocity > body->velocity[1])
+                body->velocity[1] = state.terminal_velocity;
+        }
 
         body->velocity[0] += body->acceleration[0];
         body->velocity[1] += body->acceleration[1];
@@ -52,20 +62,34 @@ void physics_update(void) {
     }
 }
 
-uint64 physics_body_create(Body_data *data, On_hit on_hit, On_static_hit on_static_hit) {
-    Body body = {
+uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_static_hit on_static_hit) {
+    uint64 id = state.body_list->len;
+
+    for (uint64 i = 0; i < state.body_list->len; i++) {
+        Body *body = physics_body_get(i);
+        if (!body->active) {
+            id = i;
+            break;
+        }
+    }
+
+    if (id == state.body_list->len) {
+        if (list_append(state.body_list, &(Body){0}) == (uint64)-1) {
+            ERROR_EXIT_PROGRAM("Cannot append item to physics body_list\n");
+        }
+    }
+    Body *body = physics_body_get(id);
+    *body = (Body){
         .aabb = {
             .pos = { data->pos[0], data->pos[1] },
             .half_size = { data->size[0] * 0.5, data->size[1] * 0.5 }
         },
         .velocity = { data->velocity[0], data->velocity[1] }, .acceleration = { 0, 0 },
         .collision_layer = data->collision_layer, .collision_mask = data->collision_mask,
-        .on_hit = on_hit, .on_static_hit = on_static_hit
+        .on_hit = on_hit, .on_static_hit = on_static_hit,
+        .active = true, .kinematic = kinematic
     };
-    if (list_append(state.body_list, &body) == (uint64)-1) {
-        ERROR_EXIT_PROGRAM("Cannot append item to physics body_list\n");
-    }
-    return state.body_list->len - 1;
+    return id;
 }
 Body *physics_body_get(uint64 index) {
     return (Body *)list_get(state.body_list, index);
@@ -138,7 +162,6 @@ Collision ray_collide_aabb(vec2 pos, vec2 magnitude, AABB aabb) {
             result.normal[1] = (dy > 0) - (dy < 0);
     }
     return result;
-
 }
 
 AABB minkowsky_diff_aabb(AABB *a, AABB *b) {
@@ -194,6 +217,20 @@ static void stationary_response(Body *body) {
             vec2_add(body->aabb.pos, body->aabb.pos, penetration_vector);
         }
     }
+
+    if (!body->on_hit) return;
+
+    for (uint64 i = 0; i < state.body_list->len; i++) {
+        Body *other = physics_body_get(i);
+        if (!(body->collision_mask & other->collision_layer)) continue;
+        AABB aabb = minkowsky_diff_aabb(&other->aabb, &body->aabb);
+
+        vec2 min, max;
+        aabb_min_max(min, max, &aabb);
+        if (min[0] <= 0 && max[0] >= 0 && min[1] <= 0 && max[1] >= 0) {
+            body->on_hit(body, other, &(Collision){.collided = true, .other_id = i});
+        }
+    }
 }
 static void sweep_response(Body *body, vec2 distance) {
     Collision collision = sweep_static_bodies(body, distance);
@@ -225,36 +262,12 @@ static void sweep_response(Body *body, vec2 distance) {
     }
 }
 
-static void update_sweep_result(Collision *result, uint64 other_id, AABB a, AABB b, vec2 velocity, uint8 a_collision_mask, uint8 b_collision_layer) {
-    if (!(a_collision_mask & b_collision_layer)) return;
-
-    AABB sum_aabb = b;
-    // calculate collision aabb
-    vec2_add(sum_aabb.half_size, sum_aabb.half_size, a.half_size);
-    // cast a ray from the object's position to collsion rectangle
-    Collision hit = ray_collide_aabb(a.pos, velocity, sum_aabb);
-
-    if (!hit.collided) return;
-
-    if (hit.time < result->time)
-        *result = hit;
-    else if (hit.time == result->time) {
-        // solve highest velocity axis first
-        if (fabsf(velocity[0]) > fabsf(velocity[1]) && hit.normal[0] != 0)
-            *result = hit;    
-        else if (fabsf(velocity[1]) > fabsf(velocity[0]) && hit.normal[1] != 0)
-            *result = hit;
-    }
-    result->other_id = other_id;
-}
-
 static Collision sweep_static_bodies(Body *body, vec2 velocity) {
     Collision result = {.time = 0xBEEF};
 
     for (uint32 i = 0; i < state.static_body_list->len; i++) {
         Static_body *static_body = physics_static_body_get(i);
-        update_sweep_result(&result, i, body->aabb, static_body->aabb,
-                            velocity, body->collision_mask, static_body->collision_layer);
+        update_sweep_result_static(&result, body, i, velocity);
     }
     return result;
 }
@@ -265,13 +278,59 @@ static Collision sweep_bodies(Body *body, vec2 velocity) {
     for (uint32 i = 0; i < state.body_list->len; i++) {
         Body *other = physics_body_get(i);
         if (body == other) continue;
-        update_sweep_result(&result, i, body->aabb, other->aabb,
-                            velocity, body->collision_mask, other->collision_layer);
+        update_sweep_result(&result, body, i, velocity);
     }
     return result;
 }
 
-void physics_exit(void) {
-    list_delete(state.body_list);
-    list_delete(state.static_body_list);
+static void update_sweep_result(Collision *result, Body *body, uint64 other_id, vec2 velocity) {
+    Body *other = physics_body_get(other_id);
+    if (!(body->collision_mask & other->collision_layer)) return;
+
+    AABB sum_aabb = other->aabb;
+    // calculate collision aabb
+    vec2_add(sum_aabb.half_size, sum_aabb.half_size, body->aabb.half_size);
+    // cast a ray from the object's position to collsion rectangle
+    Collision hit = ray_collide_aabb(body->aabb.pos, velocity, sum_aabb);
+
+    if (!hit.collided) return;
+
+    if (body->on_hit && !(body->collision_mask & other->collision_layer))
+        body->on_hit(body, other, &hit);
+    if (hit.time < result->time)
+        *result = hit;
+    else if (hit.time == result->time) {
+        // solve highest velocity axis first
+        if (fabsf(velocity[0]) > fabsf(velocity[1]) && hit.normal[0] != 0)
+            *result = hit;
+        else if (fabsf(velocity[1]) > fabsf(velocity[0]) && hit.normal[1] != 0)
+            *result = hit;
+    }
+    result->other_id = other_id;
+}
+
+static void update_sweep_result_static(Collision *result, Body *body, uint64 other_id, vec2 velocity) {
+    Static_body *static_body = physics_static_body_get(other_id);
+    if (!(body->collision_mask & static_body->collision_layer)) return;
+
+    AABB sum_aabb = static_body->aabb;
+    // calculate collision aabb
+    vec2_add(sum_aabb.half_size, sum_aabb.half_size, body->aabb.half_size);
+    // cast a ray from the object's position to collsion rectangle
+    Collision hit = ray_collide_aabb(body->aabb.pos, velocity, sum_aabb);
+
+    if (!hit.collided) return;
+
+    if (body->on_hit && !(body->collision_mask & static_body->collision_layer))
+        body->on_static_hit(body, static_body, &hit);
+    if (hit.time < result->time)
+        *result = hit;
+    else if (hit.time == result->time) {
+        // solve highest velocity axis first
+        if (fabsf(velocity[0]) > fabsf(velocity[1]) && hit.normal[0] != 0)
+            *result = hit;
+        else if (fabsf(velocity[1]) > fabsf(velocity[0]) && hit.normal[1] != 0)
+            *result = hit;
+    }
+    result->other_id = other_id;
 }

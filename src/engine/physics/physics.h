@@ -33,6 +33,7 @@ struct body {
     uint8 collision_layer, collision_mask;
     On_hit on_hit;
     On_static_hit on_static_hit;
+    bool active, kinematic;
 };
 
 struct static_body {
@@ -52,7 +53,7 @@ void physics_init(void);
 void physics_update(void);
 void physics_exit(void);
 
-uint64 physics_body_create(Body_data *data, On_hit on_hit, On_static_hit on_static_hit);
+uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_static_hit on_static_hit);
 Body *physics_body_get(uint64 index);
 
 uint64 physics_static_body_create(Body_data data);

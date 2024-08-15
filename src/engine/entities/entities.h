@@ -12,7 +12,7 @@ typedef struct entity {
 } Entity; 
 
 void entity_init(void);
-uint64 entity_create(Body_data data, On_hit on_hit, On_static_hit on_static_hit);
+uint64 entity_create(Body_data *data, bool kinematic, On_hit on_hit, On_static_hit on_static_hit);
 Entity *entity_get(uint64 id);
 uint64 entity_count(void);
 void entity_exit(void);

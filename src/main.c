@@ -10,9 +10,14 @@
 #include "engine/entities/entities.h"
 #include "engine/animation.h"
 
+static float32 SMALL_ENEMY_SPEED = 100;
+static float32 LARGE_ENEMY_SPEED = 250;
+static float32 SMALL_ENEMY_HEALTH = 3;
+static float32 LARGE_ENEMY_HEALTH = 7;
+
 static void handle_input(void);
 static bool app_running = true;
-static Body *player_body = NULL, *enemy_body = NULL;
+static Body *player_body = NULL;
 
 static vec4 player_color = {0, 1, 1, 1};
 static bool player_on_ground = false;
@@ -30,12 +35,35 @@ void player_on_static_hit_callback(Body *self, Static_body *other, Collision *co
     }
 }
 
-void enemy_on_static_hit_callback(Body *self, Static_body *other, Collision *collision) {
+void small_enemy_on_static_hit_callback(Body *self, Static_body *other, Collision *collision) {
     if (collision->normal[0] > 0) {
-        self->velocity[0] = 100;
+        self->velocity[0] = SMALL_ENEMY_SPEED;
     }
     if (collision->normal[0] < 0) {
-        self->velocity[0] = -100;
+        self->velocity[0] = -SMALL_ENEMY_SPEED;
+    }
+}
+
+void large_enemy_on_static_hit_callback(Body *self, Static_body *other, Collision *collision) {
+    if (collision->normal[0] > 0) {
+        self->velocity[0] = LARGE_ENEMY_SPEED;
+    }
+    if (collision->normal[0] < 0) {
+        self->velocity[0] = -LARGE_ENEMY_SPEED;
+    }
+}
+
+void fire_on_hit(Body *self, Body *other, Collision *collision) {
+    if (other->collision_layer == COLLISION_LAYER_ENEMY) {
+        for (uint64 i = 0; i < entity_count(); i++) {
+            Entity *entity = entity_get(i);
+            if (entity->body_id == collision->other_id) {
+                Body *body = physics_body_get(entity->body_id);
+                body->active = false;
+                entity->active = false;
+                break;
+            }
+        }
     }
 }
 
@@ -52,21 +80,22 @@ int main(void) {
     
     uint8 enemy_mask = COLLISION_LAYER_PLAYER | COLLISION_LAYER_TERRAIN;
     uint8 player_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_TERRAIN;
+    uint8 fire_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_PLAYER;
     
-    uint64 player_id = entity_create((Body_data){
+    uint64 player_id = entity_create(&(Body_data){
                                      .pos = {300, 100}, .size = {25, 25},
                                      .velocity = {0, 0}, .collision_layer = COLLISION_LAYER_PLAYER, .collision_mask = player_mask},
-                                     player_on_hit_callback, player_on_static_hit_callback);
+                                     false, player_on_hit_callback, player_on_static_hit_callback);
     float32 width = 640, height = 360;
     uint32 static_body_a_id = physics_static_body_create((Body_data){.pos = {width * 0.5 - 12.5, height - 12.5}, .size = {width - 25, 25}, .collision_layer = COLLISION_LAYER_TERRAIN});
     uint32 static_body_b_id = physics_static_body_create((Body_data){.pos = {width - 12.5, height * 0.5 + 12.5}, .size = {25, height - 25}, .collision_layer = COLLISION_LAYER_TERRAIN});
     uint32 static_body_c_id = physics_static_body_create((Body_data){.pos = {width * 0.5 + 12.5, 12.5}, .size = {width - 25, 25}, .collision_layer = COLLISION_LAYER_TERRAIN});
     uint32 static_body_d_id = physics_static_body_create((Body_data){.pos = {12.5, height * 0.5 - 12.5}, .size = {25, height - 25}, .collision_layer = COLLISION_LAYER_TERRAIN});
     uint32 static_body_e_id = physics_static_body_create((Body_data){.pos = {width * 0.5, height * 0.5}, .size = {50, 50}, .collision_layer = COLLISION_LAYER_TERRAIN});
-    uint64 enemy_id_a = entity_create((Body_data){
-                                     .pos = {300, 100}, .size = {25, 25},
-                                     .velocity = {90, 0}, .collision_layer = COLLISION_LAYER_ENEMY, .collision_mask = enemy_mask},
-                                     NULL, enemy_on_static_hit_callback);
+    uint64 fire_id = entity_create(&(Body_data){
+                                     .pos = {150, 50}, .size = {50, 50},
+                                     .velocity = {0, 0}, .collision_layer = 0, .collision_mask = fire_mask},
+                                     true, fire_on_hit, NULL);
 
     Sprite_sheet player_sprite_sheet;
     render_load_sprite_sheet(&player_sprite_sheet, "./res/assets/player.png", 24, 24);
@@ -83,6 +112,7 @@ int main(void) {
     );
     uint64 player_walk_animation_id = animation_create(player_walk_animation_def_id, true);
     uint64 player_idle_animation_id = animation_create(player_idle_animation_def_id, true);
+    float32 spawn_time = 0;
 
     while(app_running) {
         time_update();
@@ -94,8 +124,6 @@ int main(void) {
         Static_body *static_body_c = physics_static_body_get(static_body_c_id);
         Static_body *static_body_d = physics_static_body_get(static_body_d_id);
         Static_body *static_body_e = physics_static_body_get(static_body_e_id);
-        Entity *enemy = entity_get(enemy_id_a);
-        enemy_body = physics_body_get(enemy->body_id);
 
         if (player_body->velocity[0] != 0)
             player->animation_id = player_walk_animation_id;
@@ -105,10 +133,38 @@ int main(void) {
         handle_input();
         physics_update();
         animation_update(timing.delta);
+        {
+            spawn_time -= timing.delta;
+            if (spawn_time <= 0) {
+                spawn_time = (float32)((rand() % 200) + 200) / 100;
+                spawn_time *= 0.5;
+                for (uint64 i = 0; i < 50; i++) {
+                    bool is_flipped = (rand() % 100) >= 50;
+                    float32 spawn_x = is_flipped ? 540 : 100;
+
+                    uint64 entity_id = entity_create(&(Body_data){
+                        .pos = {spawn_x, 100}, .size = {25, 25},
+                        .velocity = {0, 0}, .collision_layer = COLLISION_LAYER_ENEMY, .collision_mask = enemy_mask},
+                                                     false, NULL, small_enemy_on_static_hit_callback);
+                    Entity *entity = entity_get(entity_id);
+                    Body *body = physics_body_get(entity->body_id);
+                    float32 speed = SMALL_ENEMY_SPEED * 10 * ((rand() % 100) * 0.01) + 100;
+                    body->velocity[0] = is_flipped ? -speed : speed;
+                }
+            }
+        }
         render_begin();
 
-        render_aabb(&player_body->aabb, player_color);
-        render_aabb(&enemy_body->aabb, (vec4){1, 1, 1, 1});
+        for (uint64 i = 0; i < entity_count(); i++) {
+            Entity *entity = entity_get(i);
+            Body *body = physics_body_get(entity->body_id);
+            if (body->active) {
+                render_aabb(&body->aabb, (vec4){0.25, 0.25, 1, 1});
+            } else {
+                render_aabb(&body->aabb, (vec4){1, 0, 0, 1});
+            }
+        }
+
         render_aabb(&static_body_a->aabb, (vec4){1, 1, 1, 1});
         render_aabb(&static_body_b->aabb, (vec4){1, 1, 1, 1});
         render_aabb(&static_body_c->aabb, (vec4){1, 1, 1, 1});
