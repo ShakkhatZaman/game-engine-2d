@@ -1,7 +1,7 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
-#include <GLFW/glfw3.h>
+#include <SDL2/SDL.h>
 #include <linmath.h>
 
 #include "../physics/physics.h"
@@ -22,9 +22,9 @@ typedef struct sprite_sheet {
     uint32 texture_id;
 } Sprite_sheet;
 
-GLFWwindow *render_init(void);
+SDL_Window *render_init(void);
 void render_begin(void);
-void render_end(GLFWwindow *window, float32 *m_width, float32 *m_height, uint32 batch_texture_id);
+void render_end(SDL_Window *window, float32 *m_width, float32 *m_height, uint32 batch_texture_id);
 void render_exit(void);
 
 uint32 shader_create(const char *vert_shader_path, const char *frag_shader_path);

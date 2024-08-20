@@ -1,7 +1,8 @@
 #include <stdbool.h>
 
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#define SDL_MAIN_HANDLED
+#include <SDL2/SDL.h>
 
 #include "engine/global.h"
 #include "engine/utils.h"
@@ -14,6 +15,7 @@ static float32 SMALL_ENEMY_SPEED = 100;
 static float32 LARGE_ENEMY_SPEED = 250;
 static float32 SMALL_ENEMY_HEALTH = 3;
 static float32 LARGE_ENEMY_HEALTH = 7;
+static SDL_Event event;
 
 static void handle_input(void);
 static bool app_running = true;
@@ -68,15 +70,14 @@ void fire_on_hit(Body *self, Body *other, Collision *collision) {
 }
 
 int main(void) {
-    if(!glfwInit()) {ERROR_RETURN(1, "Unable to initialize GLFW\n");}
+    if(SDL_Init(SDL_INIT_EVERYTHING)) {ERROR_RETURN(1, "Unable to initialize SDL\n");}
 
     time_init(60);
-    GLFWwindow *window = render_init();
+    SDL_Window *window = render_init();
     config_init();
     physics_init();
     entity_init();
     animation_init();
-    glfwSetKeyCallback(window, glfw_key_callback);
     
     uint8 enemy_mask = COLLISION_LAYER_PLAYER | COLLISION_LAYER_TERRAIN;
     uint8 player_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_TERRAIN;
@@ -201,22 +202,27 @@ int main(void) {
     animation_exit();
     glDeleteTextures(1, &player_sprite_sheet.texture_id);
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    SDL_DestroyWindow(window);
+    SDL_Quit();
     return 0;
 }
 
 static void handle_input(void) {
-    if (keys.escape != KEY_UNPRESSED) app_running = false;
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_QUIT) app_running = false;
+    }
+    input_update();
+
+    if (keys[KEY_ESCAPE] != KEY_UNPRESSED) app_running = false;
 
     float32 velx = 0;
     float32 vely = player_body->velocity[1];
 
-    if (keys.left != KEY_UNPRESSED) velx -= 200;
-    if (keys.right != KEY_UNPRESSED) velx += 200;
-    if (keys.up != KEY_UNPRESSED && player_on_ground) {
+    if (keys[KEY_LEFT] != KEY_UNPRESSED) velx -= 300;
+    if (keys[KEY_RIGHT] != KEY_UNPRESSED) velx += 300;
+    if (keys[KEY_UP] != KEY_UNPRESSED && player_on_ground) {
         player_on_ground = false;
-        vely = 1500;
+        vely = 2100;
     }
     // if (keys.down != KEY_UNPRESSED) vely -= 80;
 

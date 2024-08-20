@@ -1,7 +1,6 @@
 #ifndef IO_H
 #define IO_H
 
-#include <stdio.h>
 #include <stdbool.h>
 #include "../types.h"
 

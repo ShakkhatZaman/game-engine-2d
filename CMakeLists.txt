@@ -22,13 +22,13 @@ set(SOURCE_FILES
 )
 
 set(LINKING_LIBRARIES
-    glfw3
     opengl32
+    SDL2
 )
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE "./src/include/")
-target_link_directories(${PROJECT_NAME} PRIVATE "./src/lib/")
+target_link_directories(${PROJECT_NAME} PRIVATE ".lib/")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LINKING_LIBRARIES})

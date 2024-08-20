@@ -1,6 +1,5 @@
 #include <stddef.h>
 #include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
@@ -29,10 +28,10 @@ static void render_batch(uint32 count, uint32 texture_id);
 
 static void append_batch_quad(vec2 pos, vec2 size, vec4 uv, vec4 color);
 
-static GLFWwindow *_create_window(int32 width, int32 height);
+static SDL_Window *_create_window(int32 width, int32 height);
 
-GLFWwindow *render_init(void) {
-    GLFWwindow *window = _create_window(window_width, window_height);
+SDL_Window *render_init(void) {
+    SDL_Window *window = _create_window(window_width, window_height);
     if (!window) {
         ERROR_EXIT_PROGRAM("Exiting in render init\n");
     }
@@ -57,18 +56,17 @@ void render_begin(void) {
     batch_vert_list->len = 0;
 }
 
-void render_end(GLFWwindow *window, float32 *m_width, float32 *m_height, uint32 batch_texture_id) {
+void render_end(SDL_Window *window, float32 *m_width, float32 *m_height, uint32 batch_texture_id) {
     render_batch(batch_vert_list->len, batch_texture_id);
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+    SDL_GL_SwapWindow(window);
     int32 new_width, new_height;
-    glfwGetWindowSize(window, &new_width, &new_height);
+    SDL_GetWindowSize(window, &new_width, &new_height);
     if (new_width != window_width || new_height != window_height) {
         float32 scale_x = (float32) new_width / window_width, scale_y = (float32) new_height / window_height;
         float32 scale = (scale_x < scale_y) ? scale_x : scale_y;
         float32 scaled_width = window_width * scale, scaled_height = window_height * scale;
         glViewport(0, 0, (int32) scaled_width, (int32) scaled_height);
-        glfwSetWindowSize(window, (int32) scaled_width, (int32) scaled_height);
+        SDL_SetWindowSize(window, (int32) scaled_width, (int32) scaled_height);
     }
 }
 
@@ -369,21 +367,22 @@ static void render_line_init(uint32 *vao, uint32 *vbo) {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-static GLFWwindow *_create_window(int32 width, int32 height) {
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+static SDL_Window *_create_window(int32 width, int32 height) {
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
-    GLFWwindow *window = glfwCreateWindow(width, height, "Hello world", NULL, NULL);
+    SDL_Window *window = SDL_CreateWindow("Hello world", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                          width, height, SDL_WINDOW_OPENGL);
     if (!window) {
-        glfwTerminate();
+        SDL_Quit();
         ERROR_RETURN(NULL, "Unable to create window\n");
     }
 
-    glfwMakeContextCurrent(window);
-    if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
-        glfwTerminate();
-        glfwDestroyWindow(window);
+    SDL_GL_CreateContext(window);
+    if (!gladLoadGLLoader((GLADloadproc) SDL_GL_GetProcAddress)) {
+        SDL_Quit();
+        SDL_DestroyWindow(window);
         ERROR_RETURN(NULL, "Unable to load OpenGL\n");
     }
 
