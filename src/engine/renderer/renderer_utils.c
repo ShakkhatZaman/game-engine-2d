@@ -7,6 +7,36 @@
 
 static uint32 _compile_shader(const void *shader_src, GLenum shader_type);
 
+SDL_Window *create_window(int32 width, int32 height) {
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+
+    SDL_Window *window = SDL_CreateWindow("Hello world", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                          width, height, SDL_WINDOW_OPENGL);
+    if (!window) {
+        SDL_Quit();
+        ERROR_RETURN(NULL, "Unable to create window. SDL error: %s\n", SDL_GetError());
+    }
+
+    SDL_GL_CreateContext(window);
+    if (!gladLoadGLLoader((GLADloadproc) SDL_GL_GetProcAddress)) {
+        SDL_Quit();
+        SDL_DestroyWindow(window);
+        ERROR_RETURN(NULL, "Unable to load OpenGL\n");
+    }
+
+    printf("Vendor: %s\n", glGetString(GL_VENDOR));
+    printf("Version: %s\n", glGetString(GL_VERSION));
+    printf("Renderer: %s\n", glGetString(GL_RENDERER));
+
+    glViewport(0, 0, width, height);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    return window;
+}
+
 uint32 shader_create(const char *vert_shader_path, const char *frag_shader_path) {
     int32 status;
     File vert_shader_src = read_file(vert_shader_path);

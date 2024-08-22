@@ -12,7 +12,8 @@ set(SOURCE_FILES
     "./src/engine/time.c"
     "./src/engine/config.c"
     "./src/engine/list.c"
-    "./src/engine/animation.c"
+    "./src/engine/audio/audio.c"
+    "./src/engine/animation/animation.c"
     "./src/engine/entities/entities.c"
     "./src/engine/io/io.c"
     "./src/engine/input/input.c"
@@ -24,11 +25,12 @@ set(SOURCE_FILES
 set(LINKING_LIBRARIES
     opengl32
     SDL2
+    SDL2_mixer
 )
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE "./src/include/")
-target_link_directories(${PROJECT_NAME} PRIVATE ".lib/")
+target_link_directories(${PROJECT_NAME} PRIVATE "./lib/")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LINKING_LIBRARIES})

@@ -3,8 +3,8 @@
 
 #include <stdbool.h>
 
-#include "renderer/renderer.h"
-#include "types.h"
+#include "../renderer/renderer.h"
+#include "../types.h"
 
 #define MAX_FRAMES 16
 

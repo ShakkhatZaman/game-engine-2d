@@ -9,13 +9,17 @@
 #include "engine/renderer/renderer.h"
 #include "engine/physics/physics.h"
 #include "engine/entities/entities.h"
-#include "engine/animation.h"
+#include "engine/animation/animation.h"
+#include "engine/audio/audio.h"
 
 static float32 SMALL_ENEMY_SPEED = 100;
 static float32 LARGE_ENEMY_SPEED = 250;
 static float32 SMALL_ENEMY_HEALTH = 3;
 static float32 LARGE_ENEMY_HEALTH = 7;
+
 static SDL_Event event;
+static Mix_Music *MUSIC_STAGE_1;
+static Mix_Chunk *JUMP_SOUND;
 
 static void handle_input(void);
 static bool app_running = true;
@@ -70,7 +74,9 @@ void fire_on_hit(Body *self, Body *other, Collision *collision) {
 }
 
 int main(void) {
-    if(SDL_Init(SDL_INIT_EVERYTHING)) {ERROR_RETURN(1, "Unable to initialize SDL\n");}
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+        ERROR_RETURN(1, "Unable to initialize SDL. SDL error: %s\n", SDL_GetError());
+    }
 
     time_init(60);
     SDL_Window *window = render_init();
@@ -78,6 +84,11 @@ int main(void) {
     physics_init();
     entity_init();
     animation_init();
+    audio_init();
+
+    audio_music_load(&MUSIC_STAGE_1, "./res/sounds/breezys_mega_quest_2_stage_1.mp3");
+    audio_sound_load(&JUMP_SOUND, "./res/sounds/jump.wav");
+    audio_play_music(MUSIC_STAGE_1, -1);
     
     uint8 enemy_mask = COLLISION_LAYER_PLAYER | COLLISION_LAYER_TERRAIN;
     uint8 player_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_TERRAIN;
@@ -99,7 +110,7 @@ int main(void) {
                                      true, fire_on_hit, NULL);
 
     Sprite_sheet player_sprite_sheet;
-    render_load_sprite_sheet(&player_sprite_sheet, "./res/assets/player.png", 24, 24);
+    render_load_sprite_sheet(&player_sprite_sheet, "./res/textures/player.png", 24, 24);
 
     uint64 player_walk_animation_def_id = animation_def_create(
         &player_sprite_sheet,
@@ -201,6 +212,8 @@ int main(void) {
     entity_exit();
     animation_exit();
     glDeleteTextures(1, &player_sprite_sheet.texture_id);
+    Mix_FreeChunk(JUMP_SOUND);
+    Mix_FreeMusic(MUSIC_STAGE_1);
 
     SDL_DestroyWindow(window);
     SDL_Quit();
@@ -223,6 +236,7 @@ static void handle_input(void) {
     if (keys[KEY_UP] != KEY_UNPRESSED && player_on_ground) {
         player_on_ground = false;
         vely = 2100;
+        audio_play_sound(JUMP_SOUND);
     }
     // if (keys.down != KEY_UNPRESSED) vely -= 80;
 

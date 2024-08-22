@@ -1,6 +1,6 @@
 #include "animation.h"
-#include "list.h"
-#include "utils.h"
+#include "../list.h"
+#include "../utils.h"
 
 static List *animation_def_list;
 static List *animation_list;

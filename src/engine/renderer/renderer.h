@@ -27,6 +27,8 @@ void render_begin(void);
 void render_end(SDL_Window *window, float32 *m_width, float32 *m_height, uint32 batch_texture_id);
 void render_exit(void);
 
+SDL_Window *create_window(int32 width, int32 height);
+
 uint32 shader_create(const char *vert_shader_path, const char *frag_shader_path);
 void shader_init(void);
 

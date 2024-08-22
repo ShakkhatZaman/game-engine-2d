@@ -12,7 +12,6 @@ static uint32 vao_batch, vbo_batch, ebo_batch;
 static uint32 vao_line, vbo_line;
 static uint32 default_shader, batch_shader;
 static uint32 texture_color;
-static float32 ortho_left, ortho_bottom;
 static mat4x4 projection, model_global;
 static uint8 texture_slot;
 static float32 window_width = 1280, window_height = 720;
@@ -28,10 +27,8 @@ static void render_batch(uint32 count, uint32 texture_id);
 
 static void append_batch_quad(vec2 pos, vec2 size, vec4 uv, vec4 color);
 
-static SDL_Window *_create_window(int32 width, int32 height);
-
 SDL_Window *render_init(void) {
-    SDL_Window *window = _create_window(window_width, window_height);
+    SDL_Window *window = create_window(window_width, window_height);
     if (!window) {
         ERROR_EXIT_PROGRAM("Exiting in render init\n");
     }
@@ -45,8 +42,6 @@ SDL_Window *render_init(void) {
     render_textures_init(&texture_color);
     mat4x4_identity(model_global);
     glViewport(0, 0, window_width, window_height);
-    ortho_left = 0;
-    ortho_bottom = 0;
     return window;
 }
 
@@ -219,10 +214,14 @@ static void render_batch(uint32 count, uint32 texture_id) {
     glBufferSubData(GL_ARRAY_BUFFER, 0, count * sizeof(B_vertex), batch_vert_list->items);
 
     glUseProgram(batch_shader);
-    glActiveTexture(GL_TEXTURE0 + texture_slot);
-    glBindTexture(GL_TEXTURE_2D, texture_id);
+    glUniform1i(
+        glGetUniformLocation(default_shader, "texture_id"), texture_slot
+    );
 
     glBindVertexArray(vao_batch);
+
+    glActiveTexture(GL_TEXTURE0 + texture_slot);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
 
     glDrawElements(GL_TRIANGLES, (count / 2) * 6, GL_UNSIGNED_INT, NULL);
 
@@ -365,34 +364,4 @@ static void render_line_init(uint32 *vao, uint32 *vbo) {
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-static SDL_Window *_create_window(int32 width, int32 height) {
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-
-    SDL_Window *window = SDL_CreateWindow("Hello world", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                          width, height, SDL_WINDOW_OPENGL);
-    if (!window) {
-        SDL_Quit();
-        ERROR_RETURN(NULL, "Unable to create window\n");
-    }
-
-    SDL_GL_CreateContext(window);
-    if (!gladLoadGLLoader((GLADloadproc) SDL_GL_GetProcAddress)) {
-        SDL_Quit();
-        SDL_DestroyWindow(window);
-        ERROR_RETURN(NULL, "Unable to load OpenGL\n");
-    }
-
-    printf("Vendor: %s\n", glGetString(GL_VENDOR));
-    printf("Version: %s\n", glGetString(GL_VERSION));
-    printf("Renderer: %s\n", glGetString(GL_RENDERER));
-
-    glViewport(0, 0, width, height);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
-    return window;
 }
