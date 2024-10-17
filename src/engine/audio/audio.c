@@ -12,6 +12,9 @@ void audio_init(void) {
     if (Mix_OpenAudio(audio_rate, audio_format, channels, chunksize)) {
         ERROR_EXIT_PROGRAM("SDL_mixer error: %s", Mix_GetError());
     }
+
+    Mix_Volume(-1, 6);
+    Mix_VolumeMusic(2);
 }
 
 void audio_sound_load(Mix_Chunk **chunk, const char *path) {

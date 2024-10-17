@@ -2,7 +2,7 @@
 
 #include "../io/io.h"
 #include "../types.h"
-#include "renderer.h"
+#include "renderer_internal.h"
 #include "../utils.h"
 
 static uint32 _compile_shader(const void *shader_src, GLenum shader_type);
@@ -58,7 +58,7 @@ uint32 shader_create(const char *vert_shader_path, const char *frag_shader_path)
         int message_len = 0;
         glGetProgramiv(shader, GL_INFO_LOG_LENGTH, &message_len);
         char message[message_len];
-        glGetShaderInfoLog(shader, message_len, NULL, message);
+        glGetProgramInfoLog(shader, message_len, NULL, message);
         glDeleteProgram(shader);
         ERROR_RETURN(0, "Unable to link shader\n Error: %s\n", message);
     }
@@ -69,7 +69,7 @@ uint32 shader_create(const char *vert_shader_path, const char *frag_shader_path)
         int message_len = 0;
         glGetProgramiv(shader, GL_INFO_LOG_LENGTH, &message_len);
         char message[message_len];
-        glGetShaderInfoLog(shader, message_len, NULL, message);
+        glGetProgramInfoLog(shader, message_len, NULL, message);
         glDeleteProgram(shader);
         ERROR_RETURN(0, "Unable to link shader\n Error: %s\n", message);
     }
@@ -80,6 +80,21 @@ uint32 shader_create(const char *vert_shader_path, const char *frag_shader_path)
     free(vert_shader_src.data);
     free(frag_shader_src.data);
     return shader;
+}
+
+// takes in texture id
+// returns the texture slot number where the texture exists or has been inserted inside the texture_ids list
+int32 insert_texture_id(uint32 texture_ids[], uint32 texture_id) {
+    for (int i = 1; i < 8; i++) {
+        if (texture_ids[i] == texture_id) {
+            return i;
+        }
+        else if (texture_ids[i] == 0) {
+            texture_ids[i] = texture_id;
+            return i;
+        }
+    }
+    ERROR_RETURN(-1, "Cannot find or insert texture in texture_ids array\n");
 }
 
 static uint32 _compile_shader(const void *shader_src, GLenum shader_type) {

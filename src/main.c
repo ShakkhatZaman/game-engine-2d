@@ -137,35 +137,16 @@ int main(void) {
         Static_body *static_body_d = physics_static_body_get(static_body_d_id);
         Static_body *static_body_e = physics_static_body_get(static_body_e_id);
 
+        handle_input();
+        physics_update();
+        animation_update(timing.delta);
+        render_begin();
+
         if (player_body->velocity[0] != 0)
             player->animation_id = player_walk_animation_id;
         else
             player->animation_id = player_idle_animation_id;
 
-        handle_input();
-        physics_update();
-        animation_update(timing.delta);
-        {
-            spawn_time -= timing.delta;
-            if (spawn_time <= 0) {
-                spawn_time = (float32)((rand() % 200) + 200) / 100;
-                spawn_time *= 0.5;
-                for (uint64 i = 0; i < 50; i++) {
-                    bool is_flipped = (rand() % 100) >= 50;
-                    float32 spawn_x = is_flipped ? 540 : 100;
-
-                    uint64 entity_id = entity_create(&(Body_data){
-                        .pos = {spawn_x, 100}, .size = {25, 25},
-                        .velocity = {0, 0}, .collision_layer = COLLISION_LAYER_ENEMY, .collision_mask = enemy_mask},
-                                                     false, NULL, small_enemy_on_static_hit_callback);
-                    Entity *entity = entity_get(entity_id);
-                    Body *body = physics_body_get(entity->body_id);
-                    float32 speed = SMALL_ENEMY_SPEED * 10 * ((rand() % 100) * 0.01) + 100;
-                    body->velocity[0] = is_flipped ? -speed : speed;
-                }
-            }
-        }
-        render_begin();
 
         for (uint64 i = 0; i < entity_count(); i++) {
             Entity *entity = entity_get(i);
@@ -202,7 +183,7 @@ int main(void) {
         render_sprite_sheet_frame(&player_sprite_sheet, 1, 2, (vec2){100, 200}, (vec2){50, 50}, false);
         render_sprite_sheet_frame(&player_sprite_sheet, 0, 3, (vec2){50, 100}, (vec2){25, 25}, false);
 
-        render_end(window, &width, &height, player_sprite_sheet.texture_id);
+        render_end(window, &width, &height);
         time_update_end();
         player_color[0] = 0;
         player_color[2] = 1;

@@ -20,6 +20,7 @@ set(SOURCE_FILES
     "./src/engine/physics/physics.c"
     "./src/engine/renderer/renderer.c"
     "./src/engine/renderer/renderer_utils.c"
+    "./src/engine/renderer/renderer_internal.c"
 )
 
 set(LINKING_LIBRARIES
