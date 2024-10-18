@@ -126,7 +126,7 @@ void append_batch_quad(vec2 pos, vec2 size, vec4 uv, vec4 color, int32 texture_s
 void render_shaders_init(void) {
     default_shader = shader_create("./res/shaders/default.vert", "./res/shaders/default.frag");
     batch_shader = shader_create("./res/shaders/batch_quad.vert", "./res/shaders/batch_quad.frag");
-    mat4x4_ortho(projection, 0, render_width, 0, render_height, -2, 2);
+    mat4x4_ortho(projection, 0, app_width, 0, app_height, -2, 2);
     glUseProgram(default_shader);
     glUniformMatrix4fv(
         glGetUniformLocation(default_shader, "projection"),

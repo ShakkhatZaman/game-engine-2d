@@ -32,6 +32,7 @@ uint64 animation_create(uint64 animation_def_id, bool does_loop);
 void animation_destroy(uint64 animation_id);
 Animation *animation_get(uint64 animation_id);
 void animation_update(float32 dt);
+void animation_render(uint64 animation_id, vec2 pos, vec2 size, vec4 color);
 void animation_exit(void);
 
 #endif // !ANIMATION_H

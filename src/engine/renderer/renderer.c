@@ -14,7 +14,7 @@ uint32 default_shader, batch_shader;
 uint32 texture_color;
 mat4x4 projection, model_global;
 float32 window_width = 1280, window_height = 720;
-float32 render_width = 640, render_height = 360;
+float32 app_width = 640, app_height = 360;
 List *batch_vert_list = NULL;
 
 static uint32 batch_texture_ids[8] = {0};
@@ -172,7 +172,7 @@ void render_batch(uint32 count, uint32 texture_ids[]) {
     for (int i = 1; i < 8; i++) batch_texture_ids[i] = 0;
 }
 
-void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, vec2 pos, vec2 size, bool is_flipped) {
+void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, vec2 pos, vec2 size, vec4 color, bool is_flipped) {
     vec4 uv;
     float32 norm_cell_width = (1.0 / sheet->width) * sheet->cell_width;
     float32 norm_cell_height = (1.0 / sheet->height) * sheet->cell_height;
@@ -184,7 +184,7 @@ void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, ve
 
     vec2 bottom_left = {pos[0] - size[0] * 0.5, pos[1] - size[1] * 0.5};
     int32 texture_slot = insert_texture_id(batch_texture_ids, sheet->texture_id);
-    append_batch_quad(bottom_left, size, uv, (vec4){1, 1, 1, 1}, texture_slot);
+    append_batch_quad(bottom_left, size, uv, color, texture_slot);
 }
 
 void render_load_sprite_sheet(Sprite_sheet *sheet, const char *path, float32 cell_width, float32 cell_height) {

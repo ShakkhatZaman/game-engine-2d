@@ -51,11 +51,6 @@ uint64 animation_create(uint64 animation_def_id, bool does_loop) {
     return id;
 }
 
-void animation_destroy(uint64 animation_id) {
-    Animation *animation = list_get(animation_list, animation_id);
-    animation->is_active = false;
-}
-
 Animation *animation_get(uint64 animation_id) {
     return list_get(animation_list, animation_id);
 }
@@ -76,6 +71,21 @@ void animation_update(float32 dt) {
             animation->current_frame_duration = def->frames[animation->current_frame_index].duration;
         }
     }
+}
+
+void animation_render(uint64 animation_id, vec2 pos, vec2 size, vec4 color) {
+    if (animation_id == -1) {
+        ERROR_EXIT("Animation not found");
+        return;
+    }
+    Animation *anim = animation_get(animation_id);
+    Animation_frame *frame = &anim->def->frames[anim->current_frame_index];
+    render_sprite_sheet_frame(anim->def->sheet, frame->row, frame->col, pos, size, color, anim->is_flipped);
+}
+
+void animation_destroy(uint64 animation_id) {
+    Animation *animation = list_get(animation_list, animation_id);
+    animation->is_active = false;
 }
 
 void animation_exit(void) {

@@ -8,7 +8,7 @@ void entity_init(void) {
     entity_list = list_create(0, sizeof(Entity));
 }
 
-uint64 entity_create(Body_data *data, bool kinematic, On_hit on_hit, On_static_hit on_static_hit){
+uint64 entity_create(Body_data *data, vec2 sprite_offset, bool kinematic, On_hit on_hit, On_static_hit on_static_hit) {
     uint64 id = entity_list->len;
     for (uint64 i = 0; i < entity_list->len; i++) {
         Entity *entity = entity_get(i);
@@ -27,7 +27,7 @@ uint64 entity_create(Body_data *data, bool kinematic, On_hit on_hit, On_static_h
     *entity = (Entity){
         .body_id = physics_body_create(data, kinematic, on_hit, on_static_hit),
         .animation_id = -1,
-        .active = true
+        .active = true, .sprite_offset = {sprite_offset[0], sprite_offset[1]}
     };
     return id;
 }

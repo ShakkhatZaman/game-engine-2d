@@ -23,7 +23,7 @@ extern uint32 default_shader, batch_shader;
 extern uint32 texture_color;
 extern mat4x4 projection, model_global;
 extern float32 window_width, window_height;
-extern float32 render_width, render_height;
+extern float32 app_width, app_height;
 extern List *batch_vert_list;
 
 SDL_Window *create_window(int32 width, int32 height);

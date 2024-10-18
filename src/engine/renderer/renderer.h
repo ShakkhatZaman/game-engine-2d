@@ -25,6 +25,6 @@ void render_aabb(AABB *aabb, vec4 color);
 void render_batch(uint32 count, uint32 texture_id[]);
 
 void render_load_sprite_sheet(Sprite_sheet *sheet, const char *path, float32 cell_width, float32 cell_height);
-void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, vec2 pos, vec2 size, bool is_flipped);
+void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, vec2 pos, vec2 size, vec4 color, bool is_flipped);
 
 #endif // !RENDERER_H

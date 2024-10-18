@@ -9,6 +9,7 @@ typedef enum collision_layer {
     COLLISION_LAYER_PLAYER = 1,
     COLLISION_LAYER_ENEMY = 1 << 1,
     COLLISION_LAYER_TERRAIN = 1 << 2,
+    COLLISION_LAYER_ENEMY_PASSTHROUGH = 1 << 3,
 } Collision_layer;
 
 typedef struct body Body;
@@ -54,9 +55,11 @@ void physics_update(void);
 void physics_exit(void);
 
 uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_static_hit on_static_hit);
+uint64 physics_body_count(void);
 Body *physics_body_get(uint64 index);
 
 uint64 physics_static_body_create(Body_data data);
+uint64 physics_static_body_count(void);
 Static_body *physics_static_body_get(uint64 index);
 
 bool physics_point_intersect(vec2 point, AABB *aabb);

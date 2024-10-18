@@ -222,7 +222,7 @@ static void stationary_response(Body *body) {
 
     for (uint64 i = 0; i < state.body_list->len; i++) {
         Body *other = physics_body_get(i);
-        if (!(body->collision_mask & other->collision_layer)) continue;
+        if (!(body->collision_mask & other->collision_layer) || !other->active) continue;
         AABB aabb = minkowsky_diff_aabb(&other->aabb, &body->aabb);
 
         vec2 min, max;
@@ -277,7 +277,7 @@ static Collision sweep_bodies(Body *body, vec2 velocity) {
 
     for (uint32 i = 0; i < state.body_list->len; i++) {
         Body *other = physics_body_get(i);
-        if (body == other) continue;
+        if (body == other || !other->active) continue;
         update_sweep_result(&result, body, i, velocity);
     }
     return result;
@@ -295,8 +295,8 @@ static void update_sweep_result(Collision *result, Body *body, uint64 other_id, 
 
     if (!hit.collided) return;
 
-    if (body->on_hit && !(body->collision_mask & other->collision_layer))
-        body->on_hit(body, other, &hit);
+    // if (body->on_hit)
+    //     body->on_hit(body, other, &hit);
     if (hit.time < result->time)
         *result = hit;
     else if (hit.time == result->time) {
@@ -321,8 +321,8 @@ static void update_sweep_result_static(Collision *result, Body *body, uint64 oth
 
     if (!hit.collided) return;
 
-    if (body->on_hit && !(body->collision_mask & static_body->collision_layer))
-        body->on_static_hit(body, static_body, &hit);
+    // if (body->on_static_hit)
+    //     body->on_static_hit(body, static_body, &hit);
     if (hit.time < result->time)
         *result = hit;
     else if (hit.time == result->time) {
@@ -333,4 +333,12 @@ static void update_sweep_result_static(Collision *result, Body *body, uint64 oth
             *result = hit;
     }
     result->other_id = other_id;
+}
+
+uint64 physics_body_count(void) {
+    return state.body_list->len;
+}
+
+uint64 physics_static_body_count(void) {
+    return state.static_body_list->len;
 }
