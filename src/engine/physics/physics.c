@@ -25,7 +25,7 @@ void physics_init(void) {
     state.body_list = list_create(0, sizeof(Body));
     state.static_body_list = list_create(0, sizeof(Static_body));
 
-    state.gravity = -75;
+    state.gravity = -50;
     state.terminal_velocity = -7000;
 
     tick_rate = 1.0 / iterations;
@@ -206,6 +206,7 @@ void aabb_min_max(vec2 min, vec2 max, AABB *aabb) {
 static void stationary_response(Body *body) {
     for (uint32 i = 0; i < state.static_body_list->len; i++) {
         Static_body *static_body = physics_static_body_get(i);
+        if (!(body->collision_mask & static_body->collision_layer)) continue;
         AABB aabb = minkowsky_diff_aabb(&static_body->aabb, &body->aabb);
 
         vec2 min, max;

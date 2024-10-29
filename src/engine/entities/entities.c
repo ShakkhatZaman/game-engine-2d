@@ -40,6 +40,13 @@ uint64 entity_count(void) {
     return entity_list->len;
 }
 
+void entity_destroy(uint64 entity_id) {
+    Entity *entity = list_get(entity_list, entity_id);
+    Body *body = physics_body_get(entity->body_id);
+    entity->active = false;
+    body->active = false;
+}
+
 void entity_exit(void) {
     list_delete(entity_list);
 }

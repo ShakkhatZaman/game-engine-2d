@@ -44,6 +44,7 @@ void render_begin(void) {
 }
 
 void render_end(SDL_Window *window, float32 *m_width, float32 *m_height) {
+    // printf("len: %zu\n", batch_vert_list->len);
     render_batch(batch_vert_list->len, batch_texture_ids);
     SDL_GL_SwapWindow(window);
     int32 new_width, new_height;
@@ -164,7 +165,7 @@ void render_batch(uint32 count, uint32 texture_ids[]) {
         glBindTexture(GL_TEXTURE_2D, batch_texture_ids[i]);
     }
 
-    glDrawElements(GL_TRIANGLES, (count / 2) * 6, GL_UNSIGNED_INT, NULL);
+    glDrawElements(GL_TRIANGLES, (count / 4) * 6, GL_UNSIGNED_INT, NULL);
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -181,7 +182,10 @@ void render_sprite_sheet_frame(Sprite_sheet *sheet, float32 row, float32 col, ve
     uv[1] = y;
     uv[2] = x + ((is_flipped) ? 0 : norm_cell_width);
     uv[3] = y + norm_cell_height;
+    if (size[0] < 0) size[0] = sheet->cell_width;
+    if (size[1] < 0) size[1] = sheet->cell_height;
 
+    // bottom left is calculated from center
     vec2 bottom_left = {pos[0] - size[0] * 0.5, pos[1] - size[1] * 0.5};
     int32 texture_slot = insert_texture_id(batch_texture_ids, sheet->texture_id);
     append_batch_quad(bottom_left, size, uv, color, texture_slot);

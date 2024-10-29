@@ -20,14 +20,14 @@ typedef struct animation_def {
 } Animation_def;
 
 typedef struct animation {
-    Animation_def *def;
+    uint64 def_id;
     float32 current_frame_duration;
     uint8 current_frame_index;
-    bool does_loop, is_active, is_flipped;
+    bool does_loop, active, is_flipped;
 } Animation;
 
 void animation_init(void);
-uint64 animation_def_create(Sprite_sheet *sheet, float32 *durations, uint8 *rows, uint8 *cols, uint8 frame_count);
+uint64 animation_def_create(Sprite_sheet *sheet, float32 duration, uint8 row, uint8 *cols, uint8 frame_count);
 uint64 animation_create(uint64 animation_def_id, bool does_loop);
 void animation_destroy(uint64 animation_id);
 Animation *animation_get(uint64 animation_id);
