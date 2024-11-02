@@ -64,11 +64,11 @@ int main(void) {
     audio_music_load(&MUSIC_STAGE_1, "./res/sounds/breezys_mega_quest_2_stage_1.mp3");
     audio_sound_load(&JUMP_SOUND, "./res/sounds/jump.wav");
     audio_play_music(MUSIC_STAGE_1, -1);
-    
+
     uint8 enemy_mask = COLLISION_LAYER_PLAYER | COLLISION_LAYER_TERRAIN;
     uint8 player_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_TERRAIN | COLLISION_LAYER_ENEMY_PASSTHROUGH;
     uint8 fire_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_PLAYER;
-    
+
     uint64 player_id = entity_create(&(Body_data){
                                      .pos = {300, 150}, .size = {25, 25},
                                      .velocity = {0, 0}, .collision_layer = COLLISION_LAYER_PLAYER, .collision_mask = player_mask},
@@ -108,7 +108,6 @@ int main(void) {
 
         player = entity_get(player_id);
         player_body = physics_body_get(player->body_id);
-        if (!player->active) printf("bologne");
 
         handle_input();
         physics_update();
