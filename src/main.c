@@ -13,7 +13,7 @@
 #include "engine/audio/audio.h"
 
 static float32 SMALL_ENEMY_SPEED = 100;
-static float32 LARGE_ENEMY_SPEED = 175;
+static float32 LARGE_ENEMY_SPEED = 150;
 static float32 SMALL_ENEMY_HEALTH = 3;
 static float32 LARGE_ENEMY_HEALTH = 7;
 
@@ -26,6 +26,7 @@ static Mix_Chunk *JUMP_SOUND;
 
 static void handle_input(void);
 static bool app_running = true;
+static Entity *player = NULL;
 static Body *player_body = NULL;
 
 static vec4 player_color = {0, 1, 1, 1};
@@ -69,14 +70,14 @@ int main(void) {
     uint8 fire_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_PLAYER;
     
     uint64 player_id = entity_create(&(Body_data){
-                                     .pos = {300, 100}, .size = {25, 25},
+                                     .pos = {300, 150}, .size = {25, 25},
                                      .velocity = {0, 0}, .collision_layer = COLLISION_LAYER_PLAYER, .collision_mask = player_mask},
                                      (vec4){0, 0}, false, player_on_hit_callback, player_on_static_hit_callback);
     physics_static_body_create((Body_data){.pos = {width * 0.5, height - 16}, .size = {width, 32}, .collision_layer = COLLISION_LAYER_TERRAIN});
-    physics_static_body_create((Body_data){.pos = {width * 0.25, 16}, .size = {width * 0.5 - 64, 48}, .collision_layer = COLLISION_LAYER_TERRAIN});
-    physics_static_body_create((Body_data){.pos = {width * 0.75, 16}, .size = {width * 0.5 - 64, 48}, .collision_layer = COLLISION_LAYER_TERRAIN});
-    physics_static_body_create((Body_data){.pos = {16, height * 0.5 - 3 * 32}, .size = {32, height}, .collision_layer = COLLISION_LAYER_TERRAIN});
-    physics_static_body_create((Body_data){.pos = {width - 16, height * 0.5 - 3 * 32}, .size = {32, height}, .collision_layer = COLLISION_LAYER_TERRAIN});
+    physics_static_body_create((Body_data){.pos = {width * 0.25, 19}, .size = {width * 0.5 - 64, 38}, .collision_layer = COLLISION_LAYER_TERRAIN});
+    physics_static_body_create((Body_data){.pos = {width * 0.75, 19}, .size = {width * 0.5 - 64, 38}, .collision_layer = COLLISION_LAYER_TERRAIN});
+    physics_static_body_create((Body_data){.pos = {16, height * 0.5 - 2 * 32}, .size = {32, height - 128}, .collision_layer = COLLISION_LAYER_TERRAIN});
+    physics_static_body_create((Body_data){.pos = {width - 16, height * 0.5 - 2 * 32}, .size = {32, height - 128}, .collision_layer = COLLISION_LAYER_TERRAIN});
     physics_static_body_create((Body_data){.pos = {60, height - 32 * 3 - 16}, .size = {200, 32}, .collision_layer = COLLISION_LAYER_TERRAIN});
     physics_static_body_create((Body_data){.pos = {width - 60, height - 32 * 3 - 16}, .size = {200, 32}, .collision_layer = COLLISION_LAYER_TERRAIN});
     physics_static_body_create((Body_data){.pos = {width * 0.5, height - 32 * 3 - 16}, .size = {192, 32}, .collision_layer = COLLISION_LAYER_TERRAIN});
@@ -105,20 +106,16 @@ int main(void) {
     while(app_running) {
         time_update();
 
-        Entity *player = entity_get(player_id);
+        player = entity_get(player_id);
         player_body = physics_body_get(player->body_id);
+        if (!player->active) printf("bologne");
 
         handle_input();
         physics_update();
         animation_update(timing.delta);
         render_begin();
 
-        render_sprite_sheet_frame(&map_sprites, 0, 0, (vec4){width / 2, height / 2}, (vec4){640, 360}, (vec4){1, 1, 1, 0.2}, false);
-
-        if (player_body->velocity[0] != 0)
-            player->animation_id = player_walk_animation_id;
-        else
-            player->animation_id = player_idle_animation_id;
+        render_sprite_sheet_frame(&map_sprites, 0, 0, (vec4){width / 2, height / 2}, (vec4){640, 360}, (vec4){1, 1, 1, 0.5}, false);
 
         for (uint64 i = 0; i < entity_count(); i++) {
             Entity *entity = entity_get(i);
@@ -161,14 +158,6 @@ int main(void) {
             spawn_timer -= 2 * timing.delta;
             if (spawn_timer <= 0) {
                 spawn_timer = (float32)((rand() % 200) + 200) / 100.0;
-                // for (int i = 0; i < 5; i++) {
-                //     float32 spawn_x = (rand() % 2) ? 540 : 180;
-                //     float32 velocity = (spawn_x == 540) ? -((rand() % 100) + 50) : (rand() % 100) + 50;
-                //     uint64 entity_id = entity_create(&(Body_data){
-                //         .pos = {spawn_x, 200}, .size = {20, 20}, .velocity = {velocity, 0},
-                //         .collision_mask = enemy_mask, .collision_layer = COLLISION_LAYER_ENEMY},
-                //         (vec4){0, 0}, false, NULL, small_enemy_on_static_hit_callback);
-                // }
                 spawn_enemy(false, false, true);
                 spawn_enemy(true, true, false);
             }
@@ -210,26 +199,29 @@ static void handle_input(void) {
 
     Animation *player_walk_animation = animation_get(player_walk_animation_id);
     Animation *player_idle_animation = animation_get(player_idle_animation_id);
+    player->animation_id = player_idle_animation_id;
 
     if (keys[KEY_LEFT] != KEY_UNPRESSED) {
         velx -= 350;
         player_walk_animation->is_flipped = true;
         player_idle_animation->is_flipped = true;
+        player->animation_id = player_walk_animation_id;
     }
     if (keys[KEY_RIGHT] != KEY_UNPRESSED) {
         velx += 350;
         player_walk_animation->is_flipped = false;
         player_idle_animation->is_flipped = false;
+        player->animation_id = player_walk_animation_id;
     }
     if (keys[KEY_UP] != KEY_UNPRESSED && player_on_ground) {
-        player_on_ground = false;
-        vely = 2000;
+        vely = 1200;
         audio_play_sound(JUMP_SOUND);
     }
     // if (keys.down != KEY_UNPRESSED) vely -= 80;
 
     player_body->velocity[0] = velx;
     player_body->velocity[1] = vely;
+    player_on_ground = false;
 }
 
 void player_on_hit_callback(Body *self, Body *other, Collision *collision) {
@@ -265,6 +257,10 @@ void large_enemy_on_static_hit_callback(Body *self, Static_body *other, Collisio
 }
 
 void fire_on_hit(Body *self, Body *other, Collision *collision) {
+    if (other->collision_layer == COLLISION_LAYER_PLAYER) {
+        other->aabb.pos[0] = 300;
+        other->aabb.pos[1] = 150;
+    }
     if (other->collision_layer == COLLISION_LAYER_ENEMY) {
         for (uint64 i = 0; i < entity_count(); i++) {
             Entity *entity = entity_get(i);

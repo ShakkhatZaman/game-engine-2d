@@ -25,7 +25,7 @@ void physics_init(void) {
     state.body_list = list_create(0, sizeof(Body));
     state.static_body_list = list_create(0, sizeof(Static_body));
 
-    state.gravity = -50;
+    state.gravity = -75;
     state.terminal_velocity = -7000;
 
     tick_rate = 1.0 / iterations;
@@ -156,10 +156,15 @@ Collision ray_collide_aabb(vec2 pos, vec2 magnitude, AABB aabb) {
         float32 py = aabb.half_size[1] - fabsf(dy);
 
         // set normal for the direction of collision
-        if (px < py) 
+        if (px < py)
             result.normal[0] = (dx > 0) - (dx < 0);
         else
             result.normal[1] = (dy > 0) - (dy < 0);
+        // else {
+        //     result.normal[0] = (dx > 0) - (dx < 0);
+        //     result.normal[1] = (dy > 0) - (dy < 0);
+        // }
+
     }
     return result;
 }
@@ -249,7 +254,7 @@ static void sweep_response(Body *body, vec2 distance) {
             body->aabb.pos[1] += distance[1];
             body->velocity[0] = 0;
         }
-        else if (collision.normal[1] != 0) {
+        if (collision.normal[1] != 0) {
             body->aabb.pos[0] += distance[0];
             body->velocity[1] = 0;
         }
@@ -320,6 +325,7 @@ static void update_sweep_result_static(Collision *result, Body *body, uint64 oth
     // cast a ray from the object's position to collsion rectangle
     Collision hit = ray_collide_aabb(body->aabb.pos, velocity, sum_aabb);
 
+    vec2 temp_normal = {result->normal[0], result->normal[1]};
     if (!hit.collided) return;
 
     // if (body->on_static_hit)
@@ -334,6 +340,8 @@ static void update_sweep_result_static(Collision *result, Body *body, uint64 oth
             *result = hit;
     }
     result->other_id = other_id;
+    if (hit.normal[0] == 0) result->normal[0] = temp_normal[0];
+    if (hit.normal[1] == 0) result->normal[1] = temp_normal[1];
 }
 
 uint64 physics_body_count(void) {
