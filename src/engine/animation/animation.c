@@ -54,7 +54,11 @@ uint64 animation_create(uint64 animation_def_id, bool does_loop) {
 }
 
 Animation *animation_get(uint64 animation_id) {
-    return list_get(animation_list, animation_id);
+    Animation * anim = list_get(animation_list, animation_id);
+    if (!anim) {
+        ERROR_RETURN(NULL, "error in animation_list");
+    }
+    return anim;
 }
 
 void animation_update(float32 dt) {

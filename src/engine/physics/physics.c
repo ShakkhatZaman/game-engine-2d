@@ -11,7 +11,7 @@ typedef struct physics_internal_state {
 
 static Physics_internal_state state;
 
-static uint32 iterations = 4;
+static uint32 iterations = 2;
 static float32 tick_rate;
 
 static void stationary_response(Body *body);
@@ -55,6 +55,7 @@ void physics_update(void) {
         // scale velocity with delta time to use in calculations
         vec2 scaled_velocity;
         vec2_scale(scaled_velocity, body->velocity, timing.delta * tick_rate);
+        // one sweep response and one stationary response for each iteration
         for (int j = 0; j < iterations; j++) {
             sweep_response(body, scaled_velocity);
             stationary_response(body);
@@ -67,6 +68,7 @@ uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_st
 
     for (uint64 i = 0; i < state.body_list->len; i++) {
         Body *body = physics_body_get(i);
+        // to use inactive objects first
         if (!body->active) {
             id = i;
             break;
@@ -91,11 +93,27 @@ uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_st
     };
     return id;
 }
+
+uint64 physics_trigger_create(vec2 position, vec2 size, uint8 collision_layer, uint8 collision_mask, On_hit on_hit) {
+    Body_data data = {
+        .pos = {position[0], position[1]}, .size = {size[0], size[1]},
+        .velocity = {0, 0},
+        .collision_mask = collision_mask, .collision_layer = collision_layer
+    };
+
+    return physics_body_create(&data, true, on_hit, NULL);
+}
+
 Body *physics_body_get(uint64 index) {
-    return (Body *)list_get(state.body_list, index);
+    Body *body = (Body *)list_get(state.body_list, index);
+    if (!body) {
+        ERROR_RETURN(NULL, "error in body_list");
+    }
+    return body;
 }
 
 uint64 physics_static_body_create(Body_data data) {
+    // no inactive body selection since static bodies don't get destroyed
     Static_body static_body = {
         .aabb = {
             .pos = { data.pos[0], data.pos[1] },
@@ -108,8 +126,13 @@ uint64 physics_static_body_create(Body_data data) {
     }
     return state.static_body_list->len - 1;
 }
+
 Static_body *physics_static_body_get(uint64 index) {
-    return (Static_body *)list_get(state.static_body_list, index);
+    Static_body *static_body = (Static_body *)list_get(state.static_body_list, index);
+    if (!static_body) {
+        ERROR_RETURN(NULL, "error in static_body_list");
+    }
+    return static_body;
 }
 
 bool physics_point_intersect(vec2 point, AABB *aabb) {
@@ -252,18 +275,16 @@ static void sweep_response(Body *body, vec2 distance) {
         // reset velocity in the direction of collision and move in the other direction
         if (collision.normal[0] != 0) {
             body->aabb.pos[1] += distance[1];
-            body->velocity[0] = 0;
         }
         if (collision.normal[1] != 0) {
             body->aabb.pos[0] += distance[0];
-            body->velocity[1] = 0;
         }
         if (body->on_static_hit) {
             body->on_static_hit(body, physics_static_body_get(collision.other_id), &collision);
         }
     }
+    // no collisions
     else {
-        // no collisions
         vec2_add(body->aabb.pos, body->aabb.pos, distance);
     }
 }

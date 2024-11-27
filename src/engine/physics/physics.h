@@ -55,6 +55,7 @@ void physics_update(void);
 void physics_exit(void);
 
 uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_static_hit on_static_hit);
+uint64 physics_trigger_create(vec2 position, vec2 size, uint8 collision_layer, uint8 collision_mask, On_hit on_hit);
 uint64 physics_body_count(void);
 Body *physics_body_get(uint64 index);
 
