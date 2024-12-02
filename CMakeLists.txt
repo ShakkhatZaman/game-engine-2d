@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.14)
 
 project(2D_game_engine)
 
-set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+option(RELEASE_BUILD "Building for release" OFF)
 
 set(SOURCE_FILES
     "./src/main.c"
@@ -31,7 +32,16 @@ set(LINKING_LIBRARIES
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
+if(RELEASE_BUILD)
+    set(CMAKE_BUILD_TYPE Release)
+else()
+    set(CMAKE_BUILD_TYPE Debug)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _DEBUG_)
+endif()
+
 target_include_directories(${PROJECT_NAME} PRIVATE "./src/include/")
 target_link_directories(${PROJECT_NAME} PRIVATE "./lib/")
 
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LINKING_LIBRARIES})
+
+unset(RELEASE_BUILD CACHE)

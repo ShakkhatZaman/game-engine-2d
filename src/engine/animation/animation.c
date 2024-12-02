@@ -11,9 +11,7 @@ void animation_init(void) {
 }
 
 uint64 animation_def_create(Sprite_sheet *sheet, float32 duration, uint8 row, uint8 *cols, uint8 frame_count) {
-    if (frame_count > MAX_FRAMES) {
-        ERROR_EXIT_PROGRAM("Animation frame count higher than max value\n");
-    }
+    ASSERT_RETURN(MAX_FRAMES > frame_count, -1, "Animation frame count higher than max value\n");
 
     Animation_def def = {
         .sheet = sheet, .frame_count = frame_count
@@ -24,14 +22,14 @@ uint64 animation_def_create(Sprite_sheet *sheet, float32 duration, uint8 row, ui
             .duration = duration
         };
     }
-    return list_append(animation_def_list, &def);
+    uint64 animation_def_id = list_append(animation_def_list, &def);
+    ASSERT_RETURN(animation_def_id != -1, -1, "Unable to add to animation_def_list");
+    return animation_def_id;
 }
 
 uint64 animation_create(uint64 animation_def_id, bool does_loop) {
     uint64 id = animation_list->len;
-    if (animation_def_id < 0) {
-        ERROR_EXIT_PROGRAM("Animation definition with id: %zu not found\n", animation_def_id);
-    }
+    ASSERT_RETURN(animation_def_id != -1, -1, "Illegal Animation definition id to create animation\n");
     Animation *animation;
     // Find an inactive animation first
     for (uint64 i = 0; i < animation_list->len; i++) {
@@ -44,6 +42,7 @@ uint64 animation_create(uint64 animation_def_id, bool does_loop) {
 
     if (id >= animation_list->len) {
         id = list_append(animation_list, &(Animation){0});
+        ASSERT_RETURN(id != -1, -1, "Unable to add item in animation_list\n");
     }
     animation = list_get(animation_list, id);
     *animation = (Animation){
@@ -55,9 +54,7 @@ uint64 animation_create(uint64 animation_def_id, bool does_loop) {
 
 Animation *animation_get(uint64 animation_id) {
     Animation * anim = list_get(animation_list, animation_id);
-    if (!anim) {
-        ERROR_RETURN(NULL, "error in animation_list");
-    }
+    ASSERT_RETURN(anim, NULL, "Cannot access item in animation_list\n");
     return anim;
 }
 
@@ -80,17 +77,18 @@ void animation_update(float32 dt) {
 }
 
 void animation_render(uint64 animation_id, vec2 pos, vec2 size, vec4 color) {
-    if (animation_id == -1) {
-        ERROR_EXIT("Animation not found");
-        return;
-    }
+    ASSERT_RETURN(animation_id != -1, (void) 0, "Illegal Animation id to render from\n");
     Animation *anim = animation_get(animation_id);
+
+    ASSERT_RETURN(anim->def_id != -1, (void) 0, "Illegal Animation definition id to render from\n");
     Animation_def *def = list_get(animation_def_list, anim->def_id);
+
     Animation_frame *frame = &def->frames[anim->current_frame_index];
     render_sprite_sheet_frame(def->sheet, frame->row, frame->col, pos, size, color, anim->is_flipped);
 }
 
 void animation_destroy(uint64 animation_id) {
+    ASSERT_RETURN(animation_id != -1, (void) 0, "Illegal Animation id to destroy\n");
     Animation *animation = list_get(animation_list, animation_id);
     animation->active = false;
 }

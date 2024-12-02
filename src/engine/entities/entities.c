@@ -19,25 +19,25 @@ uint64 entity_create(Body_data *data, Entity_type type, vec2 sprite_offset, bool
     }
 
     if (id == entity_list->len) {
-        if (list_append(entity_list, &(Entity){0}) == -1) {
-            ERROR_EXIT_PROGRAM("Unable to add to entity list\n");
-        }
+        uint64 entity_id = list_append(entity_list, &(Entity){0});
+        ASSERT_RETURN(entity_id != -1, -1, "Unable to add to entity list\n");
     }
     Entity *entity = list_get(entity_list, id);
     *entity = (Entity){
         .body_id = physics_body_create(data, kinematic, on_hit, on_static_hit),
         .animation_id = -1,
         .active = true, .sprite_offset = {sprite_offset[0], sprite_offset[1]},
-        .type = type
+        .type = type,
     };
+
+    Body *body = physics_body_get(entity->body_id);
+    body->entity_id = id;
     return id;
 }
 
 Entity *entity_get(uint64 id) {
     Entity *entity = list_get(entity_list, id);
-    if (!entity) {
-        ERROR_RETURN(NULL, "error in entity_list\n");
-    }
+    ASSERT_RETURN(entity, NULL, "Cannot access item in entity_list\n");
     return entity;
 }
 

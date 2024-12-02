@@ -1,6 +1,4 @@
 #include <math.h>
-#define _DEBUG_
-
 #include <stdbool.h>
 
 #include <glad/glad.h>
@@ -15,17 +13,13 @@
 #include "engine/animation/animation.h"
 #include "engine/audio/audio.h"
 
-static float32 PLAYER_SPEED = 350;
-static float32 PLAYER_JUMP_VELOCITY = 1200;
-static float32 SMALL_ENEMY_SPEED = 100;
-static float32 LARGE_ENEMY_SPEED = 150;
-static float32 SMALL_ENEMY_HEALTH = 3;
-static float32 LARGE_ENEMY_HEALTH = 7;
+static float32 PLAYER_SPEED = 350, PLAYER_JUMP_VELOCITY = 1200;
+static float32 SMALL_ENEMY_SPEED = 100, LARGE_ENEMY_SPEED = 150;
+static float32 SMALL_ENEMY_HEALTH = 3, LARGE_ENEMY_HEALTH = 7;
 
-static int32 total_enemy_count = 3;
+static int32 total_enemy_count = 3, current_enemy_spawn_counter = 0;
 static float32 spawn_timer = 0;
 static float32 width = 640, height = 360;
-static int32 current_enemy_spawn_counter = 0;
 
 static uint8 enemy_mask = COLLISION_LAYER_PLAYER | COLLISION_LAYER_TERRAIN;
 static uint8 player_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_TERRAIN | COLLISION_LAYER_ENEMY_PASSTHROUGH;
@@ -42,6 +36,12 @@ static uint64 player_id = 0, player_spawn_timer = 0;
 static Entity *player = NULL;
 static Body *player_body = NULL;
 
+#ifdef _DEBUG_
+static vec4 environment_color = {1, 1, 1, 0.5};
+#else
+static vec4 environment_color = {1, 1, 1, 1};
+#endif
+
 static vec4 player_color = {0, 1, 1, 1};
 static bool player_on_ground = false;
 
@@ -49,12 +49,9 @@ static bool player_on_ground = false;
 static uint64 player_walk_animation_id, player_idle_animation_id;
 static Sprite_sheet player_sprites, map_sprites, enemy_small_sprites, enemy_large_sprites, props_sprites;
 
-static uint64 player_walk_animation_def_id;
-static uint64 player_idle_animation_def_id;
-static uint64 small_enemy_animation_def_id;
-static uint64 large_enemy_animation_def_id;
-static uint64 small_raged_enemy_animation_def_id;
-static uint64 large_raged_enemy_animation_def_id;
+static uint64 player_walk_animation_def_id, player_idle_animation_def_id;
+static uint64 small_enemy_animation_def_id, large_enemy_animation_def_id;
+static uint64 small_raged_enemy_animation_def_id, large_raged_enemy_animation_def_id;
 
 void player_on_hit_callback(Body *self, Body *other, Collision *collision);
 void player_on_static_hit_callback(Body *self, Static_body *other, Collision *collision);
@@ -98,9 +95,11 @@ int main(void) {
     // Regular entities creation
     player_id = spawn_player();
     uint64 fire_id = physics_trigger_create((vec2){width * 0.5, -4}, (vec2){64, 8}, 0, fire_mask, fire_on_hit);
+    ASSERT_EXIT(fire_id != -1, "Cannot create trigger: fire");
 
     //timers
     player_spawn_timer = timer_create(2000, false);
+    ASSERT_EXIT(player_spawn_timer != -1, "Cannot create player spawn timer");
 
     // Sprite sheets loading
     render_load_sprite_sheet(&player_sprites, "./res/textures/player.png", 24, 24);
@@ -311,17 +310,16 @@ void fire_on_hit(Body *self, Body *other, Collision *collision) {
         timer_restart(player_spawn_timer);
     }
     if (other->collision_layer == COLLISION_LAYER_ENEMY) {
-        for (uint64 i = 0; i < entity_count(); i++) {
-            Entity *entity = entity_get(i);
-            Entity_type entity_type = entity->type;
-            if (entity->active && entity->body_id == collision->other_id) {
-                entity_destroy(i);
-                animation_destroy(entity->animation_id);
-                bool is_large = (entity_type == ENTITY_ENEMY_LARGE) ? true : false;
-                spawn_enemy(is_large, true, rand() % 2);
-                current_enemy_spawn_counter -= 1;
-                break;
-            }
+        ASSERT_RETURN(other->entity_id != -1, (void) 0, "Illegal entity_id in body struct\n");
+        Entity *entity = entity_get(other->entity_id);
+        Entity_type entity_type = entity->type;
+        if (entity->active && entity->body_id == collision->other_id) {
+            entity_destroy(other->entity_id);
+            ASSERT_RETURN(entity->animation_id != -1, (void) 0, "Illegal Animation id in entity struct\n");
+            animation_destroy(entity->animation_id);
+            bool is_large = (entity_type == ENTITY_ENEMY_LARGE) ? true : false;
+            spawn_enemy(is_large, true, rand() % 2);
+            current_enemy_spawn_counter -= 1;
         }
     }
 }
@@ -344,11 +342,14 @@ void spawn_enemy(bool is_large, bool is_raged, bool is_flipped) {
         uint64 entity_id = entity_create(
             &enemy_body_data, ENTITY_ENEMY_LARGE, sprite_offset, false, NULL,
             large_enemy_on_static_hit_callback);
+        ASSERT_EXIT(entity_id != -1, "Cannot spawn enemy entity");
+
         enemy_entity = entity_get(entity_id);
 
         animation_id = animation_create(
             is_raged ? large_raged_enemy_animation_def_id : large_enemy_animation_def_id, true
         );
+        ASSERT_EXIT(animation_id != -1, "Cannot create player entity");
     }
     else {
         vec2 size = {16, 16};
@@ -363,11 +364,14 @@ void spawn_enemy(bool is_large, bool is_raged, bool is_flipped) {
         uint64 entity_id = entity_create(
             &enemy_body_data, ENTITY_ENEMY_SMALL, sprite_offset, false, NULL,
             small_enemy_on_static_hit_callback);
+        ASSERT_EXIT(entity_id != -1, "Cannot spawn enemy entity");
+
         enemy_entity = entity_get(entity_id);
 
         animation_id = animation_create(
             is_raged ? small_raged_enemy_animation_def_id : small_enemy_animation_def_id, true
         );
+        ASSERT_EXIT(animation_id != -1, "Cannot create player entity");
     }
     enemy_entity->animation_id = animation_id;
 }
@@ -377,6 +381,8 @@ uint64 spawn_player(void) {
         .pos = {300, 150}, .size = {25, 25},
         .velocity = {0, 0}, .collision_layer = COLLISION_LAYER_PLAYER, .collision_mask = player_mask};
 
-    return entity_create(&body_data, ENTITY_PLAYER, (vec4){0, 0},
-                         false, player_on_hit_callback, player_on_static_hit_callback);
+    uint64 spawned_player_id = entity_create(&body_data, ENTITY_PLAYER, (vec4){0, 0},
+                                     false, player_on_hit_callback, player_on_static_hit_callback);
+    ASSERT_EXIT(spawned_player_id != -1, "Cannot create player entity");
+    return spawned_player_id;
 }

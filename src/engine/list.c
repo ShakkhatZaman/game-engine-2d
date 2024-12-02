@@ -63,7 +63,7 @@ void list_delete(List *list) {
         free(list);
     }
     else {
-        ERROR_EXIT_PROGRAM("Illegal pointer to delete list\n");
+        ERROR_EXIT_PROGRAM("illegal pointer to delete list\n");
     }
 }
 

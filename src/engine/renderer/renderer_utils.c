@@ -26,9 +26,11 @@ SDL_Window *create_window(int32 width, int32 height) {
         ERROR_RETURN(NULL, "Unable to load OpenGL\n");
     }
 
+#ifdef _DEBUG_
     printf("Vendor: %s\n", glGetString(GL_VENDOR));
     printf("Version: %s\n", glGetString(GL_VERSION));
     printf("Renderer: %s\n", glGetString(GL_RENDERER));
+#endif
 
     glViewport(0, 0, width, height);
     glEnable(GL_BLEND);

@@ -56,9 +56,8 @@ uint64 timer_create(float32 duration, bool start_now) {
     }
 
     if (id == timer_list->len) {
-        if (list_append(timer_list, &(Timer){0}) == -1) {
-            ERROR_EXIT_PROGRAM("Unable to add to timer list\n");
-        }
+        uint64 timer_id = list_append(timer_list, &(Timer){0});
+        ASSERT_RETURN(timer_id != -1, -1, "Unable to create timer\n");
     }
 
     Timer *timer = list_get(timer_list, id);

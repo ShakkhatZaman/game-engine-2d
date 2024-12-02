@@ -76,9 +76,8 @@ uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_st
     }
 
     if (id == state.body_list->len) {
-        if (list_append(state.body_list, &(Body){0}) == (uint64)-1) {
-            ERROR_EXIT_PROGRAM("Cannot append item to physics body_list\n");
-        }
+        uint64 body_id = list_append(state.body_list, &(Body){0});
+        ASSERT_RETURN(body_id != -1, -1, "Cannot append item to physics body_list\n");
     }
     Body *body = physics_body_get(id);
     *body = (Body){
@@ -89,7 +88,8 @@ uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_st
         .velocity = { data->velocity[0], data->velocity[1] }, .acceleration = { 0, 0 },
         .collision_layer = data->collision_layer, .collision_mask = data->collision_mask,
         .on_hit = on_hit, .on_static_hit = on_static_hit,
-        .active = true, .kinematic = kinematic
+        .active = true, .kinematic = kinematic,
+        .entity_id = -1
     };
     return id;
 }
@@ -106,9 +106,7 @@ uint64 physics_trigger_create(vec2 position, vec2 size, uint8 collision_layer, u
 
 Body *physics_body_get(uint64 index) {
     Body *body = (Body *)list_get(state.body_list, index);
-    if (!body) {
-        ERROR_RETURN(NULL, "error in body_list");
-    }
+    ASSERT_RETURN(body, NULL, "Cannot access body in body list\n");
     return body;
 }
 
@@ -121,17 +119,15 @@ uint64 physics_static_body_create(Body_data data) {
         },
         .collision_layer = data.collision_layer
     };
-    if (list_append(state.static_body_list, &static_body) == (uint64)-1) {
-        ERROR_EXIT_PROGRAM("Cannot append item to physics static_body_list\n");
-    }
-    return state.static_body_list->len - 1;
+    uint64 static_body_id = list_append(state.static_body_list, &static_body);
+    ASSERT_RETURN(static_body_id != -1, -1, "Cannot append item to physics static_body_list\n");
+
+    return static_body_id;
 }
 
 Static_body *physics_static_body_get(uint64 index) {
     Static_body *static_body = (Static_body *)list_get(state.static_body_list, index);
-    if (!static_body) {
-        ERROR_RETURN(NULL, "error in static_body_list");
-    }
+    ASSERT_RETURN(static_body, NULL, "Cannot access static_body in static_body list\n");
     return static_body;
 }
 

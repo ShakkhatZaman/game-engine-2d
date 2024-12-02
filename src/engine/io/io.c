@@ -57,7 +57,7 @@ bool write_file(const char *filepath, uint64 size, const char *data) {
     if (!file_ptr) {
         ERROR_RETURN(false, "Unable to open file: %s\n", filepath);
     }
-    
+
     uint64 bytes_written = fwrite(data, 1, size, file_ptr);
 
     fclose(file_ptr);

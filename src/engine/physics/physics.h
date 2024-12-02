@@ -34,6 +34,7 @@ struct body {
     uint8 collision_layer, collision_mask;
     On_hit on_hit;
     On_static_hit on_static_hit;
+    uint64 entity_id;
     bool active, kinematic;
 };
 
