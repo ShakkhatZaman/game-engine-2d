@@ -57,8 +57,9 @@ static Sprite_sheet player_sprites, map_sprites, enemy_small_sprites, enemy_larg
 static uint64 player_walk_animation_def_id, player_idle_animation_def_id;
 static uint64 small_enemy_animation_def_id, large_enemy_animation_def_id;
 static uint64 small_raged_enemy_animation_def_id, large_raged_enemy_animation_def_id;
+static uint64 small_projectile_anim_def_id, large_projectile_anim_def_id, rocket_projectile_anim_def_id;
+static uint64 small_projectile_anim_id, large_projectile_anim_id, rocket_projectile_anim_id;
 static uint64 fire_animation_def_id, fire_animation_id;
-static uint64 projectile_animation_id;
 
 void player_on_hit_callback(Body *self, Body *other, Collision *collision);
 void player_on_static_hit_callback(Body *self, Static_body *other, Collision *collision);
@@ -123,11 +124,16 @@ int main(void) {
     large_enemy_animation_def_id = animation_def_create(&enemy_large_sprites, 0.12, 1, (uint8[]){0, 1, 2, 3, 4, 5, 6, 7}, 8);
     small_raged_enemy_animation_def_id = animation_def_create(&enemy_small_sprites, 0.12, 0, (uint8[]){0, 1, 2, 3, 4, 5, 6, 7}, 8);
     large_raged_enemy_animation_def_id = animation_def_create(&enemy_large_sprites, 0.12, 0, (uint8[]){0, 1, 2, 3, 4, 5, 6, 7}, 8);
+    small_projectile_anim_def_id = animation_def_create(&props_sprites, 0, 0, (uint8[]){0}, 1);
+    large_projectile_anim_def_id = animation_def_create(&props_sprites, 0, 0, (uint8[]){1}, 1);
+    rocket_projectile_anim_def_id = animation_def_create(&props_sprites, 0, 0, (uint8[]){2}, 1);
     player_walk_animation_id = animation_create(player_walk_animation_def_id, true);
     player_idle_animation_id = animation_create(player_idle_animation_def_id, true);
     fire_animation_def_id = animation_def_create(&fire_sprites, 0.1, 0, (uint8[]){0, 1, 2, 3, 4, 5, 6}, 7);
     fire_animation_id = animation_create(fire_animation_def_id, true);
-    projectile_animation_id = animation_create(player_idle_animation_def_id, true);
+    small_projectile_anim_id = animation_create(small_projectile_anim_def_id, true);
+    large_projectile_anim_id = animation_create(large_projectile_anim_def_id, true);
+    rocket_projectile_anim_id = animation_create(rocket_projectile_anim_def_id, true);
 
     uint64 fire_id = entity_create(&(Body_data){.pos = {width * 0.5, 10}, .size = {32, 64}, .kinematic = true,}, ENTITY_FIRE, (vec2){0, 0}, NULL, NULL, NULL);
     Entity *fire = entity_get(fire_id);
@@ -436,11 +442,19 @@ uint64 spawn_player(void) {
 
 void shoot_gun(void) {
     float32 velocity = weapons[current_weapon].projectile_speed * player_direction;
+    Projectile_type projectile_type = weapons[current_weapon].projectile;
+    uint64 projectile_anim_id = small_projectile_anim_id;
+    if (projectile_type == PROJECTILE_LARGE) {
+        projectile_anim_id = large_projectile_anim_id;
+    }
+    if (projectile_type == PROJECTILE_ROCKET) {
+        projectile_anim_id = rocket_projectile_anim_id;
+    }
     uint64 projectile_id = entity_create(&(Body_data){
         .pos = {player_body->aabb.pos[0], player_body->aabb.pos[1]}, .velocity = {velocity, 0},
-        .size = {25, 25}, .kinematic = true, .collision_mask = projectile_mask, .collision_layer = COLLISION_LAYER_PROJECTILE,
+        .size = {16, 16}, .kinematic = true, .collision_mask = projectile_mask, .collision_layer = COLLISION_LAYER_PROJECTILE,
     }, ENTITY_PROJECTILE, (vec2){0, 0}, projectile_on_hit_callback, projectile_on_static_hit_callback, NULL);
 
     Entity *projectile = entity_get(projectile_id);
-    projectile->animation_id = projectile_animation_id;
+    projectile->animation_id = projectile_anim_id;
 }
