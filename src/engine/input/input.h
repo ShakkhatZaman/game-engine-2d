@@ -9,6 +9,7 @@ typedef enum input_key {
     KEY_UP,
     KEY_DOWN,
     KEY_ESCAPE,
+    KEY_SHOOT
 } Input_key;
 
 typedef enum key_state {

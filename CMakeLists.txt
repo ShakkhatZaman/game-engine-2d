@@ -13,6 +13,7 @@ set(SOURCE_FILES
     "./src/engine/time.c"
     "./src/engine/config.c"
     "./src/engine/list.c"
+    "./src/engine/weapons.c"
     "./src/engine/audio/audio.c"
     "./src/engine/animation/animation.c"
     "./src/engine/entities/entities.c"
@@ -25,7 +26,6 @@ set(SOURCE_FILES
 )
 
 set(LINKING_LIBRARIES
-    opengl32
     SDL2
     SDL2_mixer
 )

@@ -10,6 +10,7 @@ typedef enum collision_layer {
     COLLISION_LAYER_ENEMY = 1 << 1,
     COLLISION_LAYER_TERRAIN = 1 << 2,
     COLLISION_LAYER_ENEMY_PASSTHROUGH = 1 << 3,
+    COLLISION_LAYER_PROJECTILE = 1 << 4
 } Collision_layer;
 
 typedef struct body Body;
@@ -26,6 +27,7 @@ typedef struct aabb {
 typedef struct body_data {
     vec2 pos, size, velocity;
     uint8 collision_layer, collision_mask;
+    bool kinematic;
 } Body_data;
 
 struct body {
@@ -55,7 +57,7 @@ void physics_init(void);
 void physics_update(void);
 void physics_exit(void);
 
-uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_static_hit on_static_hit);
+uint64 physics_body_create(Body_data *data, On_hit on_hit, On_static_hit on_static_hit);
 uint64 physics_trigger_create(vec2 position, vec2 size, uint8 collision_layer, uint8 collision_mask, On_hit on_hit);
 uint64 physics_body_count(void);
 Body *physics_body_get(uint64 index);

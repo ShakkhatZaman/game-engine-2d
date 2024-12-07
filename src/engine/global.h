@@ -5,7 +5,7 @@
 #include "input/input.h"
 #include "time.h"
 
-extern Key_state keys[5];
+extern Key_state keys[6];
 
 extern Config_state config;
 

@@ -26,6 +26,7 @@ void config_init(void) {
         "up = W\n"
         "down = S\n"
         "escape = Escape\n"
+        "shoot = Space\n"
         "\n";
 
     write_file(config_file_name, strlen(DEFAULT_CONFIG), DEFAULT_CONFIG);
@@ -54,6 +55,7 @@ static void load_controls(const char *config_buffer) {
     config_set_key_bind(KEY_UP, config_get_key_name(config_buffer, "up"));
     config_set_key_bind(KEY_DOWN, config_get_key_name(config_buffer, "down"));
     config_set_key_bind(KEY_ESCAPE, config_get_key_name(config_buffer, "escape"));
+    config_set_key_bind(KEY_SHOOT, config_get_key_name(config_buffer, "shoot"));
 }
 
 // returns the ***key enum*** from the keyname

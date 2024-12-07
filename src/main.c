@@ -12,6 +12,7 @@
 #include "engine/entities/entities.h"
 #include "engine/animation/animation.h"
 #include "engine/audio/audio.h"
+#include "engine/weapons.h"
 
 static float32 PLAYER_SPEED = 350, PLAYER_JUMP_VELOCITY = 1200;
 static float32 SMALL_ENEMY_SPEED = 100, LARGE_ENEMY_SPEED = 150;
@@ -24,6 +25,7 @@ static float32 width = 640, height = 360;
 static uint8 enemy_mask = COLLISION_LAYER_PLAYER | COLLISION_LAYER_TERRAIN;
 static uint8 player_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_TERRAIN | COLLISION_LAYER_ENEMY_PASSTHROUGH;
 static uint8 fire_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_PLAYER;
+static uint8 projectile_mask = COLLISION_LAYER_ENEMY | COLLISION_LAYER_TERRAIN;
 
 static SDL_Event event;
 static Mix_Music *MUSIC_STAGE_1;
@@ -42,22 +44,29 @@ static vec4 environment_color = {1, 1, 1, 0.5};
 static vec4 environment_color = {1, 1, 1, 1};
 #endif
 
+static float32 projectile_timer = 0;
+static float32 player_direction = 1;
 static vec4 player_color = {0, 1, 1, 1};
 static bool player_on_ground = false;
+static Weapon_type current_weapon = WEAPON_PISTOL;
 
 // animation creation related variables
 static uint64 player_walk_animation_id, player_idle_animation_id;
-static Sprite_sheet player_sprites, map_sprites, enemy_small_sprites, enemy_large_sprites, props_sprites;
+static Sprite_sheet player_sprites, map_sprites, enemy_small_sprites, enemy_large_sprites, props_sprites, fire_sprites;
 
 static uint64 player_walk_animation_def_id, player_idle_animation_def_id;
 static uint64 small_enemy_animation_def_id, large_enemy_animation_def_id;
 static uint64 small_raged_enemy_animation_def_id, large_raged_enemy_animation_def_id;
+static uint64 fire_animation_def_id, fire_animation_id;
+static uint64 projectile_animation_id;
 
 void player_on_hit_callback(Body *self, Body *other, Collision *collision);
 void player_on_static_hit_callback(Body *self, Static_body *other, Collision *collision);
 void small_enemy_on_static_hit_callback(Body *self, Static_body *other, Collision *collision);
 void large_enemy_on_static_hit_callback(Body *self, Static_body *other, Collision *collision);
 void fire_on_hit(Body *self, Body *other, Collision *collision);
+void projectile_on_static_hit_callback(Body *self, Static_body *other, Collision *collision);
+void shoot_gun(void);
 
 uint64 spawn_player(void);
 void spawn_enemy(bool is_large, bool is_raged, bool is_flipped);
@@ -94,12 +103,10 @@ int main(void) {
 
     // Regular entities creation
     player_id = spawn_player();
-    uint64 fire_id = physics_trigger_create((vec2){width * 0.5, -4}, (vec2){64, 8}, 0, fire_mask, fire_on_hit);
-    ASSERT_EXIT(fire_id != -1, "Cannot create trigger: fire");
+    uint64 fire_trigger_id = physics_trigger_create((vec2){width * 0.5, -4}, (vec2){64, 8}, 0, fire_mask, fire_on_hit);
 
     //timers
     player_spawn_timer = timer_create(2000, false);
-    ASSERT_EXIT(player_spawn_timer != -1, "Cannot create player spawn timer");
 
     // Sprite sheets loading
     render_load_sprite_sheet(&player_sprites, "./res/textures/player.png", 24, 24);
@@ -107,6 +114,7 @@ int main(void) {
     render_load_sprite_sheet(&enemy_large_sprites, "./res/textures/enemy_large.png", 40, 40);
     render_load_sprite_sheet(&enemy_small_sprites, "./res/textures/enemy_small.png", 24, 24);
     render_load_sprite_sheet(&props_sprites, "./res/textures/props_16x16.png", 16, 16);
+    render_load_sprite_sheet(&fire_sprites, "./res/textures/fire.png", 32, 64);
 
     // Entity animation creation
     player_walk_animation_def_id = animation_def_create(&player_sprites, 0.1, 0, (uint8[]){1, 2, 3, 4, 5, 6, 7}, 7);
@@ -117,6 +125,21 @@ int main(void) {
     large_raged_enemy_animation_def_id = animation_def_create(&enemy_large_sprites, 0.12, 0, (uint8[]){0, 1, 2, 3, 4, 5, 6, 7}, 8);
     player_walk_animation_id = animation_create(player_walk_animation_def_id, true);
     player_idle_animation_id = animation_create(player_idle_animation_def_id, true);
+    fire_animation_def_id = animation_def_create(&fire_sprites, 0.1, 0, (uint8[]){0, 1, 2, 3, 4, 5, 6}, 7);
+    fire_animation_id = animation_create(fire_animation_def_id, true);
+    projectile_animation_id = animation_create(player_idle_animation_def_id, true);
+
+    uint64 fire_id = entity_create(&(Body_data){.pos = {width * 0.5, 10}, .size = {32, 64}, .kinematic = true,}, ENTITY_FIRE, (vec2){0, 0}, NULL, NULL, NULL);
+    Entity *fire = entity_get(fire_id);
+    fire->animation_id = fire_animation_id;
+
+    fire_id = entity_create(&(Body_data){.pos = {width * 0.5 + 16, 0}, .size = {32, 64}, .kinematic = true,}, ENTITY_FIRE, (vec2){0, 0}, NULL, NULL, NULL);
+    fire = entity_get(fire_id);
+    fire->animation_id = fire_animation_id;
+
+    fire_id = entity_create(&(Body_data){.pos = {width * 0.5 - 16, 0}, .size = {32, 64}, .kinematic = true,}, ENTITY_FIRE, (vec2){0, 0}, NULL, NULL, NULL);
+    fire = entity_get(fire_id);
+    fire->animation_id = fire_animation_id;
 
     float32 spawn_time = 0;
     current_enemy_spawn_counter = total_enemy_count;
@@ -148,8 +171,8 @@ int main(void) {
             Body *body = physics_body_get(entity->body_id);
             Animation *anim = animation_get(entity->animation_id);
 
-            if (body->velocity[0] < 0) anim->is_flipped = true;
-            else if (body->velocity[0] > 0) anim->is_flipped = false;
+            if (body->velocity[0] < -1) anim->is_flipped = true;
+            else if (body->velocity[0] > 1) anim->is_flipped = false;
 
             //sprite center position
             vec2 pos;
@@ -193,6 +216,7 @@ int main(void) {
             if (current_enemy_spawn_counter < 1)
                 current_enemy_spawn_counter = total_enemy_count;
         }
+        projectile_timer -= (projectile_timer <= 0) ? 0 : timing.delta;
 
         // show fps
         char FPS[10];
@@ -242,16 +266,24 @@ static void handle_input(void) {
             player_walk_animation->is_flipped = true;
             player_idle_animation->is_flipped = true;
             player->animation_id = player_walk_animation_id;
+            player_direction = -1;
         }
         if (keys[KEY_RIGHT] != KEY_UNPRESSED) {
             velx += PLAYER_SPEED;
             player_walk_animation->is_flipped = false;
             player_idle_animation->is_flipped = false;
             player->animation_id = player_walk_animation_id;
+            player_direction = 1;
         }
         if (keys[KEY_UP] != KEY_UNPRESSED && player_on_ground) {
             vely = PLAYER_JUMP_VELOCITY;
             audio_play_sound(JUMP_SOUND);
+        }
+        if (keys[KEY_SHOOT] != KEY_UNPRESSED) {
+            if (projectile_timer <= 0) {
+                shoot_gun();
+                projectile_timer = 0.1 / weapons[current_weapon].fire_rate;
+            }
         }
         // if (keys.down != KEY_UNPRESSED) vely -= 80;
 
@@ -305,22 +337,37 @@ void large_enemy_on_static_hit_callback(Body *self, Static_body *other, Collisio
 
 void fire_on_hit(Body *self, Body *other, Collision *collision) {
     if (other->collision_layer == COLLISION_LAYER_PLAYER) {
+        ASSERT_RETURN(other->entity_id != -1, (void) 0, "Illegal player entity_id  in body struct\n");
         player_died = true;
         entity_destroy(player_id);
         timer_restart(player_spawn_timer);
     }
     if (other->collision_layer == COLLISION_LAYER_ENEMY) {
-        ASSERT_RETURN(other->entity_id != -1, (void) 0, "Illegal entity_id in body struct\n");
+        ASSERT_RETURN(other->entity_id != -1, (void) 0, "Illegal enemy entity_id  in body struct\n");
         Entity *entity = entity_get(other->entity_id);
         Entity_type entity_type = entity->type;
-        if (entity->active && entity->body_id == collision->other_id) {
-            entity_destroy(other->entity_id);
-            ASSERT_RETURN(entity->animation_id != -1, (void) 0, "Illegal Animation id in entity struct\n");
-            animation_destroy(entity->animation_id);
-            bool is_large = (entity_type == ENTITY_ENEMY_LARGE) ? true : false;
-            spawn_enemy(is_large, true, rand() % 2);
-            current_enemy_spawn_counter -= 1;
-        }
+        ASSERT_RETURN(entity->animation_id != -1, (void) 0, "Illegal Animation id in entity struct\n");
+        animation_destroy(entity->animation_id);
+        entity_destroy(other->entity_id);
+        bool is_large = (entity_type == ENTITY_ENEMY_LARGE) ? true : false;
+        spawn_enemy(is_large, true, rand() % 2);
+        current_enemy_spawn_counter -= 1;
+    }
+}
+
+void projectile_on_static_hit_callback(Body *self, Static_body *other, Collision *collision) {
+    if (collision->normal[0] != 0) {
+        uint64 projectile_id = self->entity_id;
+        entity_destroy(projectile_id);
+    }
+}
+void projectile_on_hit_callback(Body *self, Body *other, Collision *collision) {
+    if (other->collision_layer == COLLISION_LAYER_ENEMY) {
+        uint64 projectile_id = self->entity_id;
+        entity_destroy(projectile_id);
+        Entity *enemy = entity_get(other->entity_id);
+        animation_destroy(enemy->animation_id);
+        entity_destroy(other->entity_id);
     }
 }
 
@@ -340,8 +387,8 @@ void spawn_enemy(bool is_large, bool is_raged, bool is_flipped) {
             .collision_layer = COLLISION_LAYER_ENEMY, .collision_mask = COLLISION_LAYER_PLAYER | COLLISION_LAYER_TERRAIN
         };
         uint64 entity_id = entity_create(
-            &enemy_body_data, ENTITY_ENEMY_LARGE, sprite_offset, false, NULL,
-            large_enemy_on_static_hit_callback);
+            &enemy_body_data, ENTITY_ENEMY_LARGE, sprite_offset, NULL,
+            large_enemy_on_static_hit_callback, NULL);
         ASSERT_EXIT(entity_id != -1, "Cannot spawn enemy entity");
 
         enemy_entity = entity_get(entity_id);
@@ -362,8 +409,8 @@ void spawn_enemy(bool is_large, bool is_raged, bool is_flipped) {
             .collision_layer = COLLISION_LAYER_ENEMY, .collision_mask = COLLISION_LAYER_PLAYER | COLLISION_LAYER_TERRAIN
         };
         uint64 entity_id = entity_create(
-            &enemy_body_data, ENTITY_ENEMY_SMALL, sprite_offset, false, NULL,
-            small_enemy_on_static_hit_callback);
+            &enemy_body_data, ENTITY_ENEMY_SMALL, sprite_offset, NULL,
+            small_enemy_on_static_hit_callback, NULL);
         ASSERT_EXIT(entity_id != -1, "Cannot spawn enemy entity");
 
         enemy_entity = entity_get(entity_id);
@@ -382,7 +429,18 @@ uint64 spawn_player(void) {
         .velocity = {0, 0}, .collision_layer = COLLISION_LAYER_PLAYER, .collision_mask = player_mask};
 
     uint64 spawned_player_id = entity_create(&body_data, ENTITY_PLAYER, (vec4){0, 0},
-                                     false, player_on_hit_callback, player_on_static_hit_callback);
+                                     player_on_hit_callback, player_on_static_hit_callback, NULL);
     ASSERT_EXIT(spawned_player_id != -1, "Cannot create player entity");
     return spawned_player_id;
+}
+
+void shoot_gun(void) {
+    float32 velocity = weapons[current_weapon].projectile_speed * player_direction;
+    uint64 projectile_id = entity_create(&(Body_data){
+        .pos = {player_body->aabb.pos[0], player_body->aabb.pos[1]}, .velocity = {velocity, 0},
+        .size = {25, 25}, .kinematic = true, .collision_mask = projectile_mask, .collision_layer = COLLISION_LAYER_PROJECTILE,
+    }, ENTITY_PROJECTILE, (vec2){0, 0}, projectile_on_hit_callback, projectile_on_static_hit_callback, NULL);
+
+    Entity *projectile = entity_get(projectile_id);
+    projectile->animation_id = projectile_animation_id;
 }

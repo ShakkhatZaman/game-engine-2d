@@ -66,11 +66,9 @@ void animation_update(float32 dt) {
 
         if (animation->current_frame_duration <= 0) {
             animation->current_frame_index += 1;
- 
-            if(animation->current_frame_index >= def->frame_count) {
+            if (animation->current_frame_index >= def->frame_count) {
                 animation->current_frame_index = (animation->does_loop) ? 0 : def->frame_count - 1;
             }
-
             animation->current_frame_duration = def->frames[animation->current_frame_index].duration;
         }
     }
@@ -79,12 +77,13 @@ void animation_update(float32 dt) {
 void animation_render(uint64 animation_id, vec2 pos, vec2 size, vec4 color) {
     ASSERT_RETURN(animation_id != -1, (void) 0, "Illegal Animation id to render from\n");
     Animation *anim = animation_get(animation_id);
+    if (anim->active) {
+        ASSERT_RETURN(anim->def_id != -1, (void) 0, "Illegal Animation definition id to render from\n");
+        Animation_def *def = list_get(animation_def_list, anim->def_id);
 
-    ASSERT_RETURN(anim->def_id != -1, (void) 0, "Illegal Animation definition id to render from\n");
-    Animation_def *def = list_get(animation_def_list, anim->def_id);
-
-    Animation_frame *frame = &def->frames[anim->current_frame_index];
-    render_sprite_sheet_frame(def->sheet, frame->row, frame->col, pos, size, color, anim->is_flipped);
+        Animation_frame *frame = &def->frames[anim->current_frame_index];
+        render_sprite_sheet_frame(def->sheet, frame->row, frame->col, pos, size, color, anim->is_flipped);
+    }
 }
 
 void animation_destroy(uint64 animation_id) {

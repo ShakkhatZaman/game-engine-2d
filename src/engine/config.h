@@ -4,7 +4,7 @@
 #include "types.h"
 
 typedef struct config_state {
-    int32 keybinds[5];
+    int32 keybinds[6];
 } Config_state;
 
 void config_init(void);

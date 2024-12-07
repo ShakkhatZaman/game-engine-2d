@@ -15,7 +15,7 @@ static uint32 iterations = 2;
 static float32 tick_rate;
 
 static void stationary_response(Body *body);
-static void sweep_response(Body *body, vec2 velocity);
+static void sweep_response(Body *body, vec2 distance);
 static Collision sweep_static_bodies(Body *body, vec2 velocity);
 static Collision sweep_bodies(Body *body, vec2 velocity);
 static void update_sweep_result(Collision *result, Body *body, uint64 other_id, vec2 velocity);
@@ -53,17 +53,17 @@ void physics_update(void) {
         body->velocity[1] += body->acceleration[1];
 
         // scale velocity with delta time to use in calculations
-        vec2 scaled_velocity;
-        vec2_scale(scaled_velocity, body->velocity, timing.delta * tick_rate);
+        vec2 distance;
+        vec2_scale(distance, body->velocity, timing.delta * tick_rate);
         // one sweep response and one stationary response for each iteration
         for (int j = 0; j < iterations; j++) {
-            sweep_response(body, scaled_velocity);
+            sweep_response(body, distance);
             stationary_response(body);
         }
     }
 }
 
-uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_static_hit on_static_hit) {
+uint64 physics_body_create(Body_data *data, On_hit on_hit, On_static_hit on_static_hit) {
     uint64 id = state.body_list->len;
 
     for (uint64 i = 0; i < state.body_list->len; i++) {
@@ -88,7 +88,7 @@ uint64 physics_body_create(Body_data *data, bool kinematic, On_hit on_hit, On_st
         .velocity = { data->velocity[0], data->velocity[1] }, .acceleration = { 0, 0 },
         .collision_layer = data->collision_layer, .collision_mask = data->collision_mask,
         .on_hit = on_hit, .on_static_hit = on_static_hit,
-        .active = true, .kinematic = kinematic,
+        .active = true, .kinematic = data->kinematic,
         .entity_id = -1
     };
     return id;
@@ -98,10 +98,11 @@ uint64 physics_trigger_create(vec2 position, vec2 size, uint8 collision_layer, u
     Body_data data = {
         .pos = {position[0], position[1]}, .size = {size[0], size[1]},
         .velocity = {0, 0},
-        .collision_mask = collision_mask, .collision_layer = collision_layer
+        .collision_mask = collision_mask, .collision_layer = collision_layer,
+        .kinematic = true
     };
 
-    return physics_body_create(&data, true, on_hit, NULL);
+    return physics_body_create(&data, on_hit, NULL);
 }
 
 Body *physics_body_get(uint64 index) {
@@ -243,8 +244,8 @@ static void stationary_response(Body *body) {
         }
     }
 
+    // update against bodies
     if (!body->on_hit) return;
-
     for (uint64 i = 0; i < state.body_list->len; i++) {
         Body *other = physics_body_get(i);
         if (!(body->collision_mask & other->collision_layer) || !other->active) continue;
@@ -259,10 +260,10 @@ static void stationary_response(Body *body) {
 }
 static void sweep_response(Body *body, vec2 distance) {
     Collision collision = sweep_static_bodies(body, distance);
-    Collision collsiion_moving = sweep_bodies(body, distance);
+    Collision collision_moving = sweep_bodies(body, distance);
 
-    if (collsiion_moving.collided && body->on_hit)
-        body->on_hit(body, physics_body_get(collsiion_moving.other_id), &collsiion_moving);
+    if (collision_moving.collided && body->on_hit)
+        body->on_hit(body, physics_body_get(collision_moving.other_id), &collision_moving);
 
     if (collision.collided) {
         body->aabb.pos[0] = collision.pos[0];

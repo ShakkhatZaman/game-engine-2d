@@ -12,6 +12,7 @@ void input_update(void) {
     update_key_state(keyboard_state[config.keybinds[KEY_UP]], &keys[KEY_UP]);
     update_key_state(keyboard_state[config.keybinds[KEY_DOWN]], &keys[KEY_DOWN]);
     update_key_state(keyboard_state[config.keybinds[KEY_ESCAPE]], &keys[KEY_ESCAPE]);
+    update_key_state(keyboard_state[config.keybinds[KEY_SHOOT]], &keys[KEY_SHOOT]);
 }
 // checks from the config.keybinds array in global.c set by load_controls
 
